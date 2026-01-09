@@ -91,16 +91,6 @@ A modern, full-stack real-time messaging application built with the **MERN** sta
    npm run dev
    ```
 
-## 📸 Screenshots
-
-| Login Page | Chat Interface |
-|:---:|:---:|
-| Add login screenshot here | Add chat screenshot here |
-
-| Video Call | Group Settings |
-|:---:|:---:|
-| Add video call screenshot | Add group info screenshot |
-
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
