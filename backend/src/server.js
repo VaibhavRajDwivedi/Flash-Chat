@@ -13,7 +13,7 @@ dotenv.config();
 const PORT = process.env.PORT || 3000;
 
 
-
+app.set("trust proxy", 1);
 app.use(express.json({limit : '10mb'}));
 app.use(cors({origin: [process.env.CLIENT_URL, process.env.CLIENT_URL_PROD], credentials: true}));
 app.use(cookieParser());
