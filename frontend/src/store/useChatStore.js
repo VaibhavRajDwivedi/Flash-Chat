@@ -144,6 +144,10 @@ export const useChatStore = create((set, get) => ({
         set({ isCalling: true, isIncoming: true });
     },
 
+    acceptIncomingCall: () => {
+        set({ isCalling: true, isIncoming: true });
+    },
+
     endCall: () => {
         // Reset UI state
         set({

@@ -18,6 +18,7 @@ function ChatPage() {
     isIncoming,
     callData,
     answerCall,
+    acceptIncomingCall,
     endCall
   } = useChatStore();
 
@@ -65,7 +66,7 @@ function ChatPage() {
           <div className="flex gap-2 ml-4">
             {/* Accept Button */}
             <button
-              onClick={() => answerCall(callData.from, callData.signal)}
+              onClick={acceptIncomingCall}
               className="btn btn-circle btn-success text-white shadow-lg"
               title="Accept Call"
             >
