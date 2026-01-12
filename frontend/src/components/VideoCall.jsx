@@ -24,6 +24,7 @@ const VideoCall = () => {
     const localVideoRef = useRef(null);
     const remoteVideoRef = useRef(null);
     const peerConnectionRef = useRef(null);
+    const candidateQueue = useRef([]); // Queue for candidates arriving before remote desc
 
     // STUN Servers (Google's Public STUN is reliable)
     const rtcConfig = {
@@ -101,6 +102,7 @@ const VideoCall = () => {
                     // --- ANSWERING A CALL ---
                     // Set the remote description (the offer we received)
                     await pc.setRemoteDescription(new RTCSessionDescription(callData.signal));
+                    processCandidateQueue(); // Process any queued candidates now
 
                     // Create an answer
                     const answer = await pc.createAnswer();
@@ -128,6 +130,20 @@ const VideoCall = () => {
             }
         };
 
+        const processCandidateQueue = async () => {
+            const pc = peerConnectionRef.current;
+            if (!pc || !pc.remoteDescription) return;
+
+            while (candidateQueue.current.length > 0) {
+                const candidate = candidateQueue.current.shift();
+                try {
+                    await pc.addIceCandidate(candidate);
+                } catch (e) {
+                    console.error("Error adding queued ice candidate", e);
+                }
+            }
+        };
+
         setupMediaAndConnection();
 
         // CLEANUP ON UNMOUNT
@@ -152,6 +168,7 @@ const VideoCall = () => {
             const pc = peerConnectionRef.current;
             if (pc && !pc.currentRemoteDescription) {
                 await pc.setRemoteDescription(new RTCSessionDescription(signal));
+                processCandidateQueue();
             }
         };
 
@@ -159,10 +176,16 @@ const VideoCall = () => {
         const handleIceCandidate = async (candidate) => {
             const pc = peerConnectionRef.current;
             if (pc) {
-                try {
-                    await pc.addIceCandidate(new RTCIceCandidate(candidate));
-                } catch (e) {
-                    console.error("Error adding ice candidate", e);
+                // If we have remote description, add immediately
+                if (pc.remoteDescription) {
+                    try {
+                        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                    } catch (e) {
+                        console.error("Error adding ice candidate", e);
+                    }
+                } else {
+                    // Otherwise queue it
+                    candidateQueue.current.push(new RTCIceCandidate(candidate));
                 }
             }
         };
