@@ -141,7 +141,7 @@ export const useChatStore = create((set, get) => ({
             to: callerId
         });
 
-        set({ isCalling: true, isIncoming: false });
+        set({ isCalling: true, isIncoming: true });
     },
 
     endCall: () => {

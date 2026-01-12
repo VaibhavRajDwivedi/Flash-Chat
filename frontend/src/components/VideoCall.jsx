@@ -24,8 +24,8 @@ const VideoCall = () => {
     const localVideoRef = useRef(null);
     const remoteVideoRef = useRef(null);
     const peerConnectionRef = useRef(null);
-    const candidateQueue = useRef([]); 
-    const targetIdRef = useRef(null); 
+    const candidateQueue = useRef([]);
+    const targetIdRef = useRef(null);
     const [isConnected, setIsConnected] = useState(false);
 
     const rtcConfig = {
@@ -39,7 +39,7 @@ const VideoCall = () => {
         // 1. Process Queue Helper
         const processCandidateQueue = async () => {
             if (!pc || !pc.remoteDescription) return;
-            
+
             while (candidateQueue.current.length > 0) {
                 const candidate = candidateQueue.current.shift();
                 try {
@@ -57,12 +57,14 @@ const VideoCall = () => {
             targetIdRef.current = tId;
 
             if (!tId) {
-                console.error("Target ID missing, cannot establish call");
+                // If we don't have a target yet, wait for store update (useEffect dep will re-trigger)
+                console.log("Waiting for Target ID...");
                 return;
             }
 
             try {
                 // --- Get Media (Camera/Mic) ---
+
                 try {
                     stream = await navigator.mediaDevices.getUserMedia({
                         video: true,
@@ -77,7 +79,7 @@ const VideoCall = () => {
                     if (isCameraOn) toggleCamera();
                     toast.error("Camera unavailable. Switched to Audio only.");
                 }
-                
+
                 setLocalStream(stream);
                 if (localVideoRef.current) {
                     localVideoRef.current.srcObject = stream;
@@ -135,7 +137,7 @@ const VideoCall = () => {
         // -------------------------------------------
         // SOCKET LISTENERS
         // -------------------------------------------
-        
+
         const handleCallAccepted = async (signal) => {
             if (pc && !pc.currentRemoteDescription) {
                 try {
@@ -172,14 +174,14 @@ const VideoCall = () => {
         return () => {
             if (stream) stream.getTracks().forEach((track) => track.stop());
             if (pc) pc.close();
-            
+
             if (socket) {
                 socket.off("call-accepted", handleCallAccepted);
                 socket.off("receive-ice-candidate", handleIceCandidate);
             }
         };
 
-    }, [socket, isIncoming, callData, selectedUser]); 
+    }, [socket, isIncoming, callData, selectedUser]); // Dependencies ensure logic re-runs if data arrives late
 
     // Toggle Media Tracks
     useEffect(() => {
@@ -212,7 +214,7 @@ const VideoCall = () => {
                     ref={localVideoRef}
                     autoPlay
                     playsInline
-                    muted 
+                    muted
                     className={`w-full h-full object-cover ${!isCameraOn ? "hidden" : ""}`}
                 />
                 {!isCameraOn && (
