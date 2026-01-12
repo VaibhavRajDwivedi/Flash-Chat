@@ -25,6 +25,9 @@ const VideoCall = () => {
     const remoteVideoRef = useRef(null);
     const peerConnectionRef = useRef(null);
     const candidateQueue = useRef([]); // Queue for candidates arriving before remote desc
+    const targetIdRef = useRef(null); // Stable reference for who we are talking to
+    const [isConnected, setIsConnected] = useState(false);
+
 
     // STUN Servers (Google's Public STUN is reliable)
     const rtcConfig = {
@@ -36,6 +39,10 @@ const VideoCall = () => {
         let pc = null;
 
         const setupMediaAndConnection = async () => {
+            // Determine target ID once and store it
+            const tId = isIncoming ? callData?.from : selectedUser?._id;
+            targetIdRef.current = tId;
+
             try {
                 // 1. Get User Media (Camera & Mic)
 
@@ -85,8 +92,7 @@ const VideoCall = () => {
                 // 4. Handle ICE Candidates (Network Paths)
                 pc.onicecandidate = (event) => {
                     if (event.candidate) {
-                        // Determine who to send the candidate to
-                        const targetId = isIncoming ? callData?.from : selectedUser?._id;
+                        const targetId = targetIdRef.current; // Use the stable ref
 
                         if (targetId) {
                             socket.emit("send-ice-candidate", {
@@ -110,6 +116,8 @@ const VideoCall = () => {
 
                     // Send answer via Store Action
                     answerCall(callData.from, answer);
+                    setIsConnected(true); // We answered, so we are connected
+
 
                 } else {
                     // --- STARTING A CALL ---
@@ -169,6 +177,7 @@ const VideoCall = () => {
             if (pc && !pc.currentRemoteDescription) {
                 await pc.setRemoteDescription(new RTCSessionDescription(signal));
                 processCandidateQueue();
+                setIsConnected(true); // Call accepted by remote
             }
         };
 
@@ -226,7 +235,7 @@ const VideoCall = () => {
                 />
                 {/* Loading Indicator / Placeholder */}
                 <div className="absolute top-4 left-4 bg-black/50 px-4 py-2 rounded-full text-white text-sm backdrop-blur-sm">
-                    {isIncoming ? `Connected with ${callData?.name || "User"}` : "Calling..."}
+                    {isConnected ? "Connected" : (isIncoming ? `Connecting...` : "Calling...")}
                 </div>
             </div>
 
