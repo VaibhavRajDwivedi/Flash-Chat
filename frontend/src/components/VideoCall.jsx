@@ -36,20 +36,21 @@ const VideoCall = () => {
         let stream = null;
         let pc = null;
 
-        // 1. Helper function to process queued ICE candidates
+        // 1. Process Queue Helper
         const processCandidateQueue = async () => {
             if (!pc || !pc.remoteDescription) return;
+            
             while (candidateQueue.current.length > 0) {
                 const candidate = candidateQueue.current.shift();
                 try {
                     await pc.addIceCandidate(candidate);
                 } catch (e) {
-                    console.error("Error adding queued ice candidate", e);
+                    // Log warning but don't crash - often 'Unknown ufrag' for old candidates
+                    console.warn("Skipping invalid ICE candidate:", e.message);
                 }
             }
         };
 
-        // 2. Main Setup
         const setupMediaAndConnection = async () => {
             // Determine target ID immediately
             const tId = isIncoming ? callData?.from : selectedUser?._id;
@@ -61,7 +62,7 @@ const VideoCall = () => {
             }
 
             try {
-                // --- Get Media ---
+                // --- Get Media (Camera/Mic) ---
                 try {
                     stream = await navigator.mediaDevices.getUserMedia({
                         video: true,
@@ -103,11 +104,11 @@ const VideoCall = () => {
                     }
                 };
 
-                // --- Signaling ---
+                // --- Signaling (Offer/Answer) ---
                 if (isIncoming && callData?.signal) {
-                    // ANSWERING
+                    // ANSWERING A CALL
                     await pc.setRemoteDescription(new RTCSessionDescription(callData.signal));
-                    await processCandidateQueue(); 
+                    await processCandidateQueue(); // Process any candidates that arrived early
 
                     const answer = await pc.createAnswer();
                     await pc.setLocalDescription(answer);
@@ -115,7 +116,7 @@ const VideoCall = () => {
                     setIsConnected(true);
 
                 } else {
-                    // CALLING
+                    // INITIATING A CALL
                     const offer = await pc.createOffer();
                     await pc.setLocalDescription(offer);
                     if (selectedUser?._id) {
@@ -132,14 +133,14 @@ const VideoCall = () => {
         setupMediaAndConnection();
 
         // -------------------------------------------
-        // SOCKET LISTENERS (Defined INSIDE to access pc/queue)
+        // SOCKET LISTENERS
         // -------------------------------------------
         
         const handleCallAccepted = async (signal) => {
             if (pc && !pc.currentRemoteDescription) {
                 try {
                     await pc.setRemoteDescription(new RTCSessionDescription(signal));
-                    await processCandidateQueue(); // Now this works!
+                    await processCandidateQueue(); // Process candidates queued while waiting for answer
                     setIsConnected(true);
                 } catch (err) {
                     console.error("Error accepting call signal:", err);
@@ -148,16 +149,17 @@ const VideoCall = () => {
         };
 
         const handleIceCandidate = async (candidate) => {
-            if (pc) {
-                if (pc.remoteDescription) {
-                    try {
-                        await pc.addIceCandidate(new RTCIceCandidate(candidate));
-                    } catch (e) {
-                        console.error("Error adding ice candidate", e);
-                    }
-                } else {
-                    candidateQueue.current.push(new RTCIceCandidate(candidate));
+            // FIX: Queue candidates even if 'pc' is not yet created!
+            // Previously, if pc was null (during getUserMedia), candidates were dropped.
+            if (pc && pc.remoteDescription) {
+                try {
+                    await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                } catch (e) {
+                    console.warn("ICE Error:", e.message);
                 }
+            } else {
+                // Queue them for later
+                candidateQueue.current.push(new RTCIceCandidate(candidate));
             }
         };
 
@@ -177,7 +179,6 @@ const VideoCall = () => {
             }
         };
 
-    // We add dependencies to ensure correct setup if props change
     }, [socket, isIncoming, callData, selectedUser]); 
 
     // Toggle Media Tracks
