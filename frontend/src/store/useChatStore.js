@@ -148,7 +148,7 @@ export const useChatStore = create((set, get) => ({
         set({ isCalling: true, isIncoming: true });
     },
 
-    endCall: () => {
+    endCall: (userId) => {
         // Reset UI state
         set({
             isCalling: false,
@@ -158,8 +158,11 @@ export const useChatStore = create((set, get) => ({
             isCameraOn: true
         });
         
-        // Optional: You could emit an 'end-call' event here if you want 
-        // the other side to auto-close the window.
+        // Notify the other user that the call has ended
+        const socket = useAuthStore.getState().socket;
+        if (socket && userId) {
+            socket.emit("end-call", { to: userId });
+        }
     },
 
     toggleMic: () => set((state) => ({ isMicOn: !state.isMicOn })),
@@ -316,6 +319,19 @@ export const useChatStore = create((set, get) => ({
             console.log("Incoming Call detected:", data);
             set({ isIncoming: true, callData: data });
         });
+
+        // --- 5. CALL ENDED LISTENER (NEW) ---
+        socket.on("call-ended", () => {
+            set({
+                isCalling: false,
+                isIncoming: false,
+                callData: null,
+                isMicOn: true,
+                isCameraOn: true
+            });
+            toast.dismiss(); // Dismiss any lingering toasts
+            toast("Call ended", { icon: "📞" });
+        });
     },
 
     unsubscribeFromMessages: () => {
@@ -326,6 +342,7 @@ export const useChatStore = create((set, get) => ({
         socket.off('newGroup');
         socket.off('groupUpdated');
         socket.off('call-user'); // Clean up video listener
+        socket.off('call-ended');
     },
 
 }));

@@ -36,12 +36,12 @@ io.on('connection',(socket) => {
     // ============================================
 
     // When User A wants to call User B, they send the "signal" (SDP) here.
-    socket.on("call-user", ({ userToCall, signalData, from }) => {
+    socket.on("call-user", ({ userToCall, signalData, from, name }) => {
         const targetSocketId = getReceiverSocketId(userToCall);
         
         if (targetSocketId) {
-            // Forward the Offer to User B
-            io.to(targetSocketId).emit("call-user", { signal: signalData, from });
+            // Forward the Offer to User B, including the name
+            io.to(targetSocketId).emit("call-user", { signal: signalData, from, name });
         }
     });
 
@@ -63,6 +63,14 @@ io.on('connection',(socket) => {
         if (targetSocketId) {
             // Forward the candidate to the other peer so they can connect
             io.to(targetSocketId).emit("receive-ice-candidate", candidate);
+        }
+    });
+
+    // Handle Call Disconnection
+    socket.on("end-call", ({ to }) => {
+        const targetSocketId = getReceiverSocketId(to);
+        if (targetSocketId) {
+            io.to(targetSocketId).emit("call-ended");
         }
     });
 

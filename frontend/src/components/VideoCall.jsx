@@ -234,7 +234,7 @@ const VideoCall = () => {
                 </button>
 
                 <button
-                    onClick={endCall}
+                    onClick={() => endCall(targetIdRef.current)}
                     className="p-5 rounded-full bg-red-600 hover:bg-red-700 transition-all duration-200 hover:scale-110 shadow-lg shadow-red-600/50"
                 >
                     <Phone className="w-8 h-8 text-white rotate-[135deg]" />

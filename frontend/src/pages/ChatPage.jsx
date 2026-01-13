@@ -75,7 +75,7 @@ function ChatPage() {
 
             {/* Reject Button */}
             <button
-              onClick={endCall}
+              onClick={() => endCall(callData?.from)}
               className="btn btn-circle btn-error text-white shadow-lg"
               title="Decline Call"
             >
