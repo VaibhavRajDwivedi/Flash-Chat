@@ -12,6 +12,6 @@ const NoConversationPlaceholder = () => {
       <p className="text-base-content/60 mt-2">Select a conversation to start chatting</p>
     </div>
   );
-};
+}
 
 export default NoConversationPlaceholder

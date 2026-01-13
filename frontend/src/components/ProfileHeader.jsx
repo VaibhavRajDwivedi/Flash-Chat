@@ -1,30 +1,27 @@
 import { useState, useRef } from "react";
-import { LogOutIcon, VolumeOffIcon, Volume2Icon } from "lucide-react";
+import { LogOutIcon, } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
-import { useChatStore } from "../store/useChatStore";
 
-const mouseClickSound = new Audio("/sounds/mouse-click.mp3");
 
 function ProfileHeader() {
   const { logout, authUser, updateProfile } = useAuthStore();
-  const { isSoundEnabled, toggleSound } = useChatStore();
   const [selectedImg, setSelectedImg] = useState(null);
 
   const fileInputRef = useRef(null);
 
   const handleImageUpload = (e) => {
-        const file = e.target.files[0]
-        if(!file) return
+    const file = e.target.files[0]
+    if (!file) return
 
-        const reader = new FileReader();
-        reader.readAsDataURL(file)
+    const reader = new FileReader();
+    reader.readAsDataURL(file)
 
-        reader.onloadend = async () => {
-            const base64Image = reader.result
-            setSelectedImg(base64Image)
-            updateProfile({profilePic : base64Image})
-        }
-    };
+    reader.onloadend = async () => {
+      const base64Image = reader.result
+      setSelectedImg(base64Image)
+      updateProfile({ profilePic: base64Image })
+    }
+  };
 
   return (
     <div className="p-6 border-b border-slate-700/50">
@@ -75,22 +72,6 @@ function ProfileHeader() {
             <LogOutIcon className="size-5" />
           </button>
 
-          {/* SOUND TOGGLE BTN
-          <button
-            className="text-slate-400 hover:text-slate-200 transition-colors"
-            onClick={() => {
-              // play click sound before toggling
-              mouseClickSound.currentTime = 0; // reset to start
-              mouseClickSound.play().catch((error) => console.log("Audio play failed:", error));
-              toggleSound();
-            }}
-          >
-            {isSoundEnabled ? (
-              <Volume2Icon className="size-5" />
-            ) : (
-              <VolumeOffIcon className="size-5" />
-            )}
-          </button> */}
         </div>
       </div>
     </div>

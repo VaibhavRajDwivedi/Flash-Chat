@@ -14,7 +14,6 @@ export const useChatStore = create((set, get) => ({
     selectedUser: null,
     isUserLoading: false,
     isMessagesLoading: false,
-    isSoundEnabled: JSON.parse(localStorage.getItem('isSoundEnabled')) === 'true' ? true : false,
     isCreatingGroup: false,
     isGroupsLoading: false,
     groups: [],
@@ -33,10 +32,7 @@ export const useChatStore = create((set, get) => ({
     // ACTIONS
     // =================================================================
 
-    toggleSound: () => {
-        localStorage.setItem('isSoundEnabled', !get().isSoundEnabled);
-        set({ isSoundEnabled: !get().isSoundEnabled });
-    },
+    
 
     setActiveTab: (tab) => {
         set({ activeTab: tab });
