@@ -108,6 +108,19 @@ export const useChatStore = create((set, get) => ({
         }
     },
 
+    deleteMessage: async (messageId) => {
+        try {
+        await axiosInstance.delete(`/messages/${messageId}`);
+        
+        // Remove from local state immediately
+        set({
+            messages: get().messages.filter((message) => message._id !== messageId),
+        });
+        toast.success("Message deleted");
+        } catch (error) {
+        toast.error(error.response.data.error);
+        }
+    },
     // =================================================================
     // VIDEO CALL ACTIONS
     // =================================================================
@@ -309,14 +322,14 @@ export const useChatStore = create((set, get) => ({
             }
         });
 
-        // --- 4. VIDEO CALL LISTENER (NEW) ---
+        // --- 4. VIDEO CALL LISTENER ---
         socket.on("call-user", (data) => {
             // data = { from, signal, name }
             console.log("Incoming Call detected:", data);
             set({ isIncoming: true, callData: data });
         });
 
-        // --- 5. CALL ENDED LISTENER (NEW) ---
+        // --- 5. CALL ENDED LISTENER ---
         socket.on("call-ended", () => {
             set({
                 isCalling: false,
@@ -327,6 +340,13 @@ export const useChatStore = create((set, get) => ({
             });
             toast.dismiss(); // Dismiss any lingering toasts
             toast("Call ended", { icon: "📞" });
+        });
+
+        // --- 6. MESSAGE DELETED LISTENER ---  
+        socket.on("messageDeleted", (messageId) => {
+            set({
+                messages: get().messages.filter((message) => message._id !== messageId),
+            });
         });
     },
 
@@ -339,6 +359,7 @@ export const useChatStore = create((set, get) => ({
         socket.off('groupUpdated');
         socket.off('call-user'); // Clean up video listener
         socket.off('call-ended');
+        socket.off("messageDeleted");
     },
 
 }));

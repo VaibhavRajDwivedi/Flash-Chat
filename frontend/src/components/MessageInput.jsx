@@ -1,27 +1,35 @@
 import { useRef, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
 import toast from "react-hot-toast";
-import { ImageIcon, SendIcon, XIcon } from "lucide-react";
+import { ImageIcon, SendIcon, XIcon, Smile } from "lucide-react"; // Import Smile
+import EmojiPicker from "emoji-picker-react"; // Import EmojiPicker
 
 function MessageInput() {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false); // Toggle State
 
   const fileInputRef = useRef(null);
-
   const { sendMessage } = useChatStore();
 
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!text.trim() && !imagePreview) return;
 
-    sendMessage({
-      text: text.trim(),
-      image: imagePreview,
-    });
-    setText("");
-    setImagePreview("");
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    try {
+      await sendMessage({
+        text: text.trim(),
+        image: imagePreview,
+      });
+
+      // Clear state
+      setText("");
+      setImagePreview(null);
+      setShowEmojiPicker(false); // Close picker
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } catch (error) {
+      console.error("Failed to send message:", error);
+    }
   };
 
   const handleImageChange = (e) => {
@@ -41,8 +49,23 @@ function MessageInput() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const handleEmojiClick = (emojiObject) => {
+    setText((prev) => prev + emojiObject.emoji);
+  };
+
   return (
-    <div className="p-4 border-t border-slate-700/50">
+    <div className="p-4 border-t border-slate-700/50 relative"> {/* Added relative for positioning */}
+      
+      {/* Emoji Picker Popup */}
+      {showEmojiPicker && (
+        <div className="absolute bottom-20 left-4 z-40 shadow-xl rounded-xl">
+          <EmojiPicker
+            theme="dark"
+            onEmojiClick={handleEmojiClick}
+          />
+        </div>
+      )}
+
       {imagePreview && (
         <div className="w-full mb-3 flex items-center">
           <div className="relative">
@@ -66,11 +89,8 @@ function MessageInput() {
         <input
           type="text"
           value={text}
-          onChange={(e) => {
-            setText(e.target.value);
-            setText(e.target.value);
-          }}
-          className="flex-1 min-w-0 bg-slate-800/50 border border-slate-700/50 rounded-lg py-2 px-4"
+          onChange={(e) => setText(e.target.value)}
+          className="flex-1 min-w-0 bg-slate-800/50 border border-slate-700/50 rounded-lg py-2 px-4 text-slate-200 placeholder-slate-400 focus:outline-none focus:border-cyan-500/50"
           placeholder="Type your message..."
         />
 
@@ -82,14 +102,33 @@ function MessageInput() {
           className="hidden"
         />
 
+        {/* Emoji Button */}
+        <button
+          type="button"
+          onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+          className={`hidden sm:flex p-2 rounded-lg transition-colors ${
+            showEmojiPicker 
+              ? "bg-slate-700 text-cyan-500" 
+              : "bg-slate-800/50 text-slate-400 hover:text-slate-200"
+          }`}
+        >
+          <Smile className="w-5 h-5" />
+        </button>
+
+        {/* Image Button */}
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className={`hidden sm:flex bg-slate-800/50 text-slate-400 hover:text-slate-200 rounded-lg p-2 transition-colors ${imagePreview ? "text-cyan-500" : ""
-            }`}
+          className={`hidden sm:flex p-2 rounded-lg transition-colors ${
+            imagePreview 
+              ? "text-cyan-500 bg-slate-700" 
+              : "bg-slate-800/50 text-slate-400 hover:text-slate-200"
+          }`}
         >
           <ImageIcon className="w-5 h-5" />
         </button>
+
+        {/* Send Button */}
         <button
           type="submit"
           disabled={!text.trim() && !imagePreview}
@@ -101,4 +140,5 @@ function MessageInput() {
     </div>
   );
 }
+
 export default MessageInput;

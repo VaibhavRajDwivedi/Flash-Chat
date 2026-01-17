@@ -161,3 +161,34 @@ export const sendMessage = async (req, res) => {
         res.status(500).json({ message: "Server Error" });
     }
 };
+
+
+export const deleteMessage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const myId = req.user._id;
+
+    const message = await Message.findById(id);
+    if (!message) {
+      return res.status(404).json({ error: "Message not found" });
+    }
+
+    // Ensure only the sender can delete their message
+    if (message.senderId.toString() !== myId.toString()) {
+      return res.status(403).json({ error: "You can only delete your own messages" });
+    }
+
+    await Message.findByIdAndDelete(id);
+
+    // REAL-TIME UPDATE: Notify the receiver
+    const receiverSocketId = getReceiverSocketId(message.receiverId);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("messageDeleted", id);
+    }
+
+    res.status(200).json({ message: "Message deleted successfully" });
+  } catch (error) {
+    console.log("Error in deleteMessage controller: ", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
