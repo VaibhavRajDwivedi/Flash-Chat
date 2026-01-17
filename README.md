@@ -1,8 +1,15 @@
 # Flash Chat ⚡
 
+[![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Express.js](https://img.shields.io/badge/Express.js-404D59?style=for-the-badge)](https://expressjs.com/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-4EA94B?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![Socket.io](https://img.shields.io/badge/Socket.io-010101?style=for-the-badge&logo=socket.io&logoColor=white)](https://socket.io/)
+
 A modern, full-stack real-time messaging application built with the **MERN** stack. Flash Chat offers a premium user experience with features like one-on-one messaging, group chats, and real-time video calls.
 
-
+**[🚀 View Live Demo](https://flash-chat-io.netlify.app)**
 
 ## ✨ Features
 
@@ -45,51 +52,55 @@ A modern, full-stack real-time messaging application built with the **MERN** sta
 ### Installation
 
 1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/flash-chat.git
-   cd flash-chat
-   ```
+```bash
+   git clone https://github.com/VaibhavRajDwivedi/Flash-Chat.git
+   cd Flash-Chat
+```
 
 2. **Setup Backend**
-   ```bash
+```bash
    cd backend
    npm install
-   ```
+```
+
    Create a `.env` file in `backend/`:
-   ```env
+```env
    PORT=5001
    MONGODB_URI=your_mongodb_connection_string
    JWT_SECRET=your_jwt_secret
    NODE_ENV=development
-   
+
    CLOUDINARY_CLOUD_NAME=your_cloud_name
    CLOUDINARY_API_KEY=your_api_key
    CLOUDINARY_API_SECRET=your_api_secret
 
    RESEND_API_KEY=your_resend_key
-   
+
    # Arcjet Security (Optional)
    ARCJET_KEY=your_arcjet_key
-   ```
+```
+
    Start the server:
-   ```bash
+```bash
    npm run dev
-   ```
+```
 
 3. **Setup Frontend**
-   ```bash
+```bash
    cd ../frontend
    npm install
-   ```
+```
+
    Create a `.env` file in `frontend/`:
-   ```env
+```env
    # Backend URL (adjust port if needed)
-   VITE_API_URL=http://localhost:5001/api 
-   ```
+   VITE_API_URL=http://localhost:5001/api
+```
+
    Start the client:
-   ```bash
+```bash
    npm run dev
-   ```
+```
 
 ## 🤝 Contributing
 
@@ -103,4 +114,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 📄 License
 
-This project is open source and available under the content of the [MIT License](LICENSE).
+This project is open source and available under the [MIT License](LICENSE).
