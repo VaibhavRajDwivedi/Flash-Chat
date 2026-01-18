@@ -30,11 +30,28 @@ const VideoCall = () => {
 
     const rtcConfig = {
         iceServers: [
+            // Google's STUN server (Keep this)
             {
                 urls: [
                     "stun:stun.l.google.com:19302",
                     "stun:global.stun.twilio.com:3478",
                 ],
+            },
+            // OpenRelay TURN server (Free, for testing)
+            {
+                urls: "turn:openrelay.metered.ca:80",
+                username: "openrelayproject",
+                credential: "openrelayproject",
+            },
+            {
+                urls: "turn:openrelay.metered.ca:443",
+                username: "openrelayproject",
+                credential: "openrelayproject",
+            },
+            {
+                urls: "turn:openrelay.metered.ca:443?transport=tcp",
+                username: "openrelayproject",
+                credential: "openrelayproject",
             },
         ],
     };
