@@ -91,9 +91,27 @@ const VideoCall = () => {
 
                 stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
+                pc.oniceconnectionstatechange = () => {
+                    console.log("ICE Connection State:", pc.iceConnectionState);
+                    if (pc.iceConnectionState === "disconnected" || pc.iceConnectionState === "failed") {
+                        setIsConnected(false);
+                        toast.error("Connection lost/failed");
+                    } else if (pc.iceConnectionState === "connected" || pc.iceConnectionState === "completed") {
+                        setIsConnected(true);
+                    }
+                };
+
                 pc.ontrack = (event) => {
+                    console.log("Track received:", event.track.kind, event.streams);
                     if (remoteVideoRef.current) {
-                        remoteVideoRef.current.srcObject = event.streams[0];
+                        // FIX: Fallback if streams[0] is missing
+                        const remoteStream = event.streams[0] || new MediaStream([event.track]);
+                        remoteVideoRef.current.srcObject = remoteStream;
+
+                        // FIX: Explicitly play video to bypass some autoplay policies
+                        remoteVideoRef.current.onloadedmetadata = () => {
+                            remoteVideoRef.current.play().catch(e => console.error("Error playing video:", e));
+                        };
                     }
                 };
 
@@ -115,7 +133,9 @@ const VideoCall = () => {
                     const answer = await pc.createAnswer();
                     await pc.setLocalDescription(answer);
                     answerCall(callData.from, answer);
-                    setIsConnected(true);
+                    // Keep isConnected false until ICE connects for accurate status, 
+                    // but if user prefers immediate feedback we can leave it or use a separate state.
+                    // For debugging, relying on ICE state is safer.
 
                 } else {
                     // INITIATING A CALL
@@ -143,7 +163,6 @@ const VideoCall = () => {
                 try {
                     await pc.setRemoteDescription(new RTCSessionDescription(signal));
                     await processCandidateQueue(); // Process candidates queued while waiting for answer
-                    setIsConnected(true);
                 } catch (err) {
                     console.error("Error accepting call signal:", err);
                 }
@@ -156,11 +175,13 @@ const VideoCall = () => {
             if (pc && pc.remoteDescription) {
                 try {
                     await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                    console.log("Added ICE candidate");
                 } catch (e) {
                     console.warn("ICE Error:", e.message);
                 }
             } else {
                 // Queue them for later
+                console.log("Queuing ICE candidate");
                 candidateQueue.current.push(new RTCIceCandidate(candidate));
             }
         };
