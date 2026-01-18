@@ -3,6 +3,7 @@ import Message from "../models/Message.js";
 import Group from "../models/Group.js";
 import cloudinary from "../lib/cloudinary.js";
 import { getReceiverSocketId, io } from "../lib/socket.js";
+import redis from "../lib/redis.js";
 
 export const getAllContacts = async (req, res) => {
     try {
@@ -54,8 +55,25 @@ export const getMessagesByUserId = async (req, res) => {
         const myID = req.user._id;
         const { id: chatPartnerId } = req.params; // Can be UserID or GroupID
 
-        // 1. Check if the ID belongs to a Group
+        // Check if the ID belongs to a Group
         const group = await Group.findById(chatPartnerId);
+        
+        // --- REDIS LOGIC START ---
+        // Determine the cache key based on Group vs Private
+        let redisKey;
+        if (group) {
+            redisKey = `chat:group:${chatPartnerId}`;
+        } else {
+            // Sort IDs to ensure consistent key for private chats
+            redisKey = `chat:private:${[myID.toString(), chatPartnerId.toString()].sort().join(":")}`;
+        }
+
+        // Check Redis Cache first
+        const cachedMessages = await redis.get(redisKey);
+        if (cachedMessages) {
+            return res.status(200).json(JSON.parse(cachedMessages));
+        }
+        // --- REDIS LOGIC END ---
 
         let messages;
         if (group) {
@@ -70,6 +88,11 @@ export const getMessagesByUserId = async (req, res) => {
                 ]
             });
         }
+
+        // --- REDIS SAVE START ---
+        // Save result to Redis for 1 hour (3600 seconds)
+        await redis.set(redisKey, JSON.stringify(messages), "EX", 3600);
+        // --- REDIS SAVE END ---
 
         res.status(200).json(messages);
     } catch (error) {
@@ -94,13 +117,16 @@ export const sendMessage = async (req, res) => {
             imageUrl = uploadResponse.secure_url;
         }
 
-        // 1. Check if we are sending to a GROUP
+        // Check if we are sending to a GROUP
         const group = await Group.findById(chatPartnerId);
 
         let newMessage;
+        let redisKey; // To store the key we need to invalidate
 
         if (group) {
             // --- GROUP MESSAGE LOGIC ---
+            redisKey = `chat:group:${chatPartnerId}`; // Identify key
+
             newMessage = new Message({
                 senderId,
                 groupId: chatPartnerId,
@@ -132,6 +158,9 @@ export const sendMessage = async (req, res) => {
                 return res.status(404).json({ message: "Receiver not found." });
             }
 
+            // Identify key
+            redisKey = `chat:private:${[senderId.toString(), chatPartnerId.toString()].sort().join(":")}`;
+
             newMessage = new Message({
                 senderId,
                 receiverId: chatPartnerId, // Use receiverId
@@ -153,6 +182,12 @@ export const sendMessage = async (req, res) => {
                 };
                 io.to(receiverSocketId).emit('newMessage', messageWithSender);
             }
+        }
+
+        // --- REDIS INVALIDATION ---
+        // Since we added a message, the cached conversation is outdated. Delete it.
+        if (redisKey) {
+            await redis.del(redisKey);
         }
 
         res.status(201).json(newMessage);
@@ -178,12 +213,39 @@ export const deleteMessage = async (req, res) => {
       return res.status(403).json({ error: "You can only delete your own messages" });
     }
 
+    // --- REDIS KEY DETECTION ---
+    // We need to know which cache to clear *before* we delete the message
+    let redisKey;
+    if (message.groupId) {
+        redisKey = `chat:group:${message.groupId}`;
+    } else if (message.receiverId) {
+        redisKey = `chat:private:${[message.senderId.toString(), message.receiverId.toString()].sort().join(":")}`;
+    }
+
     await Message.findByIdAndDelete(id);
 
+    // --- REDIS INVALIDATION ---
+    if (redisKey) {
+        await redis.del(redisKey);
+    }
+
     // REAL-TIME UPDATE: Notify the receiver
-    const receiverSocketId = getReceiverSocketId(message.receiverId);
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("messageDeleted", id);
+    // (Existing logic + Group support)
+    if (message.receiverId) {
+        const receiverSocketId = getReceiverSocketId(message.receiverId);
+        if (receiverSocketId) {
+            io.to(receiverSocketId).emit("messageDeleted", id);
+        }
+    } else if (message.groupId) {
+        // Optional: Notify group members if you want real-time deletes in groups
+        const group = await Group.findById(message.groupId);
+        if (group) {
+            group.members.forEach(memberId => {
+                if (memberId.toString() === myId.toString()) return;
+                const memberSocketId = getReceiverSocketId(memberId.toString());
+                if (memberSocketId) io.to(memberSocketId).emit("messageDeleted", id);
+            });
+        }
     }
 
     res.status(200).json({ message: "Message deleted successfully" });
