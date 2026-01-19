@@ -52,6 +52,15 @@ const VideoCall = () => {
     };
 
     useEffect(() => {
+        // Debug ICE Config
+        console.log("RTC Configuration:", rtcConfig);
+        if (!rtcConfig.iceServers[1].username || !rtcConfig.iceServers[1].credential) {
+            console.error("TURN credentials are missing! Check your .env setup.");
+            toast.error("Video Call Config Error: Missing TURN Credentials");
+        }
+    }, []);
+
+    useEffect(() => {
         let stream = null;
         let pc = null;
 
