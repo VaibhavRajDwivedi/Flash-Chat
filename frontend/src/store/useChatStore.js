@@ -96,21 +96,32 @@ export const useChatStore = create((set, get) => ({
             isOptimistic: true,
         };
         
-        // Safely add the optimistic message to the LATEST state
+        // 1. Safely add the optimistic message to the LATEST state
         set((state) => ({ messages: [...state.messages, optimisticMessage] }));
         
         try {
             const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
             
-            // Replace the temporary optimistic message with the real one from the database
-            set((state) => ({
-                messages: state.messages.map((msg) => 
-                    msg._id === tempId ? res.data : msg
-                )
-            }));
+            set((state) => {
+                // 2. Check if the WebSocket already sneaked in and added the real message
+                const alreadyExists = state.messages.some(msg => msg._id === res.data._id);
+
+                if (alreadyExists) {
+                    // Socket beat us to it! Just clean up the temporary optimistic message.
+                    return {
+                        messages: state.messages.filter(msg => msg._id !== tempId)
+                    };
+                } else {
+                    // HTTP finished first! Swap the temporary message with the real one.
+                    return {
+                        messages: state.messages.map((msg) =>
+                            msg._id === tempId ? res.data : msg
+                        )
+                    };
+                }
+            });
             
         } catch (error) {
-            // Revert only the optimistic message on error, preserving others
             set((state) => ({
                 messages: state.messages.filter((msg) => msg._id !== tempId)
             }));
@@ -119,6 +130,7 @@ export const useChatStore = create((set, get) => ({
         }
     },
 
+    
     deleteMessage: async (messageId) => {
         try {
         await axiosInstance.delete(`/messages/${messageId}`);
@@ -284,17 +296,9 @@ export const useChatStore = create((set, get) => ({
 
         // --- 2. MESSAGE LISTENER (Chat Area) ---
         socket.on('newMessage', (newMessage) => {
-            const { chats, selectedUser, messages } = get();
-            const isPrivateMessage = !newMessage.groupId;
-            const senderId = newMessage.senderId;
-
-            // A. Update Chat List
-            if (isPrivateMessage) {
-                const isChatAlreadyInList = chats.some(user => user._id === senderId);
-                if (!isChatAlreadyInList && newMessage.senderProfile) {
-                    set({ chats: [newMessage.senderProfile, ...chats] });
-                }
-            }
+            const { chats, selectedUser } = get();
+            
+            // ... (your existing chat list update logic here) ...
 
             // B. Update Messages (If chat is open)
             if (!selectedUser) return;
@@ -302,8 +306,17 @@ export const useChatStore = create((set, get) => ({
             const isMessageSentFromSelectedUser = newMessage.senderId === selectedUser._id;
             const isMessageForCurrentGroup = newMessage.groupId && newMessage.groupId === selectedUser._id;
 
-            if (isMessageSentFromSelectedUser || isMessageForCurrentGroup) {
-                set({ messages: [...messages, newMessage] });
+            // Notice we also check if you are testing by chatting with yourself!
+            const isChattingWithMyself = selectedUser._id === useAuthStore.getState().authUser._id;
+
+            if (isMessageSentFromSelectedUser || isMessageForCurrentGroup || isChattingWithMyself) {
+                set((state) => {
+                    // Prevent duplicate if HTTP already added it!
+                    const isAlreadyAdded = state.messages.some((msg) => msg._id === newMessage._id);
+                    if (isAlreadyAdded) return state; // Do nothing if it's already there
+
+                    return { messages: [...state.messages, newMessage] };
+                });
             }
         });
 
