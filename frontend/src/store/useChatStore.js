@@ -82,7 +82,7 @@ export const useChatStore = create((set, get) => ({
     },
 
     sendMessage: async (messageData) => {
-        const { selectedUser, messages } = get()
+        const { selectedUser } = get();
         const { authUser } = useAuthStore.getState();
         const tempId = `temp-${Date.now()}`;
         
@@ -94,16 +94,27 @@ export const useChatStore = create((set, get) => ({
             image: messageData.image,
             createdAt: new Date().toISOString(),
             isOptimistic: true,
-        }
+        };
         
-        set({ messages: [...messages, optimisticMessage] });
+        // Safely add the optimistic message to the LATEST state
+        set((state) => ({ messages: [...state.messages, optimisticMessage] }));
         
         try {
-            const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData)
-            set({ messages: [...messages, res.data] });
+            const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
+            
+            // Replace the temporary optimistic message with the real one from the database
+            set((state) => ({
+                messages: state.messages.map((msg) => 
+                    msg._id === tempId ? res.data : msg
+                )
+            }));
+            
         } catch (error) {
-            set({ messages: messages }) // Revert? (In future: remove optimistic)
-            console.log("Error in sendMessage : ", error)
+            // Revert only the optimistic message on error, preserving others
+            set((state) => ({
+                messages: state.messages.filter((msg) => msg._id !== tempId)
+            }));
+            console.log("Error in sendMessage : ", error);
             toast.error(error.response?.data?.message || "Failed to send message");
         }
     },
