@@ -7,10 +7,10 @@ import redis from "../lib/redis.js";
 
 export const getAllContacts = async (req, res) => {
     try {
-        const loggedInUserId = req.user._id; // <--- Safe approach
+        const loggedInUserId = req.user._id; // Retrieves authenticated caller identity.
         const idsToIgnore = [loggedInUserId];
         const filteredUsers = await User.find({ 
-        _id: { $nin: idsToIgnore } // Find users whose _id is NOT IN this array
+        _id: { $nin: idsToIgnore } // Excludes caller from directory results.
     }).select('-password');
         res.status(200).json(filteredUsers);
     } catch (error) {
@@ -23,7 +23,7 @@ export const getChatPartners = async (req, res) => {
     try {
         const loggedInUserId = req.user._id;
 
-        // Find all messages where I am the sender OR receiver
+        // Retrieves active participant histories.
         const messages = await Message.find({
             $or: [
                 { senderId: loggedInUserId },
@@ -31,14 +31,13 @@ export const getChatPartners = async (req, res) => {
             ]
         });
 
-        // Extract unique IDs of people I've talked to
+        // Dedupes conversation partners.
         const partnerIDs = [...new Set(messages.map(msg => {
-            // Check if sender is me, if so, return receiver. Otherwise return sender.
-            // toString() is crucial here to ensure strict comparison works
+            // Resolves counterpart identifier robustly.
             return msg.senderId.toString() === loggedInUserId.toString() 
                 ? msg.receiverId?.toString() 
                 : msg.senderId.toString();
-        }))].filter(id => id); // Filter out undefined/null (clean up group messages if any slipped in)
+        }))].filter(id => id); // Purges orphaned or group artifacts.
 
         const chatPartners = await User.find({ _id: { $in: partnerIDs } }).select('-password');
 
@@ -53,22 +52,22 @@ export const getChatPartners = async (req, res) => {
 export const getMessagesByUserId = async (req, res) => {
     try {
         const myID = req.user._id;
-        const { id: chatPartnerId } = req.params; // Can be UserID or GroupID
+        const { id: chatPartnerId } = req.params; // Resolves target identifier.
 
-        // Check if the ID belongs to a Group
+        // Identifies entity type for routing.
         const group = await Group.findById(chatPartnerId);
         
         // --- REDIS LOGIC START ---
-        // Determine the cache key based on Group vs Private
+        // Determines caching prefix scheme.
         let redisKey;
         if (group) {
             redisKey = `chat:group:${chatPartnerId}`;
         } else {
-            // Sort IDs to ensure consistent key for private chats
+            // Evaluates lexicographical composite key for bidirectional caching.
             redisKey = `chat:private:${[myID.toString(), chatPartnerId.toString()].sort().join(":")}`;
         }
 
-        // Check Redis Cache first
+        // Leverages memory storage bypassing disk reads.
         const cachedMessages = await redis.get(redisKey);
         if (cachedMessages) {
             return res.status(200).json(JSON.parse(cachedMessages));
@@ -77,10 +76,10 @@ export const getMessagesByUserId = async (req, res) => {
 
         let messages;
         if (group) {
-            // It is a GROUP! Fetch all messages for this group
+            // Retrieves collective conversation context.
             messages = await Message.find({ groupId: chatPartnerId });
         } else {
-            // It is a USER! Fetch 1-on-1 private messages
+            // Retrieves bidirectional private thread.
             messages = await Message.find({
                 $or: [
                     { senderId: myID, receiverId: chatPartnerId },
@@ -90,7 +89,7 @@ export const getMessagesByUserId = async (req, res) => {
         }
 
         // --- REDIS SAVE START ---
-        // Save result to Redis for 1 hour (3600 seconds)
+        // Caches payload for ephemeral duration.
         await redis.set(redisKey, JSON.stringify(messages), "EX", 3600);
         // --- REDIS SAVE END ---
 
@@ -104,7 +103,7 @@ export const getMessagesByUserId = async (req, res) => {
 export const sendMessage = async (req, res) => {
     try {
         const senderId = req.user._id;
-        const { id: chatPartnerId } = req.params; // Can be UserID or GroupID
+        const { id: chatPartnerId } = req.params; // Captures target entity identifier.
         const { text, image } = req.body;
 
         if (!text && !image) {
@@ -117,15 +116,15 @@ export const sendMessage = async (req, res) => {
             imageUrl = uploadResponse.secure_url;
         }
 
-        // Check if we are sending to a GROUP
+        // Detects collective entity configuration.
         const group = await Group.findById(chatPartnerId);
 
         let newMessage;
-        let redisKey; // To store the key we need to invalidate
+        let redisKey; // Tracks cache node for invalidation.
 
         if (group) {
             // --- GROUP MESSAGE LOGIC ---
-            redisKey = `chat:group:${chatPartnerId}`; // Identify key
+            redisKey = `chat:group:${chatPartnerId}`; // Assigns collective prefix.
 
             newMessage = new Message({
                 senderId,
@@ -135,9 +134,9 @@ export const sendMessage = async (req, res) => {
             });
             await newMessage.save();
 
-            // Loop through all members and send to their specific socket ID
+            // Broadcasts payload to individual active peer sockets.
             group.members.forEach(memberId => {
-                // (Optional) Don't send back to the sender, they add it manually
+                // Skips transmission to originator.
                 if (memberId.toString() === senderId.toString()) return;
 
                 const memberSocketId = getReceiverSocketId(memberId.toString());
@@ -148,7 +147,7 @@ export const sendMessage = async (req, res) => {
 
         } else {
             // --- PRIVATE MESSAGE LOGIC ---
-            // Convert to string for comparison safety
+            // Compares primitives to avoid object reference inequality.
             if (senderId.toString() === chatPartnerId.toString()) {
                 return res.status(400).json({ message: "Cannot send messages to yourself." });
             }
@@ -158,12 +157,12 @@ export const sendMessage = async (req, res) => {
                 return res.status(404).json({ message: "Receiver not found." });
             }
 
-            // Identify key
+            // Assigns private prefix.
             redisKey = `chat:private:${[senderId.toString(), chatPartnerId.toString()].sort().join(":")}`;
 
             newMessage = new Message({
                 senderId,
-                receiverId: chatPartnerId, // Use receiverId
+                receiverId: chatPartnerId, // Assigns destination node.
                 text,
                 image: imageUrl
             });
@@ -171,7 +170,7 @@ export const sendMessage = async (req, res) => {
 
             const receiverSocketId = getReceiverSocketId(chatPartnerId);
             if (receiverSocketId) {
-                // Attach sender info so the receiver can update their chat list immediately - For immediade Chat List updation
+                // Embeds sender metadata mitigating client-side fetching overhead.
                 const messageWithSender = {
                     ...newMessage.toObject(),
                     senderProfile: {
@@ -185,7 +184,7 @@ export const sendMessage = async (req, res) => {
         }
 
         // --- REDIS INVALIDATION ---
-        // Since we added a message, the cached conversation is outdated. Delete it.
+        // Evicts stale entries ensuring consistency.
         if (redisKey) {
             await redis.del(redisKey);
         }
@@ -208,13 +207,13 @@ export const deleteMessage = async (req, res) => {
       return res.status(404).json({ error: "Message not found" });
     }
 
-    // Ensure only the sender can delete their message
+    // Enforces authorship constraints.
     if (message.senderId.toString() !== myId.toString()) {
       return res.status(403).json({ error: "You can only delete your own messages" });
     }
 
     // --- REDIS KEY DETECTION ---
-    // We need to know which cache to clear *before* we delete the message
+    // Identifies target cache namespace for pre-deletion access.
     let redisKey;
     if (message.groupId) {
         redisKey = `chat:group:${message.groupId}`;
@@ -229,15 +228,14 @@ export const deleteMessage = async (req, res) => {
         await redis.del(redisKey);
     }
 
-    // REAL-TIME UPDATE: Notify the receiver
-    // (Existing logic + Group support)
+    // Dispatches teardown notification to recipient sockets.
     if (message.receiverId) {
         const receiverSocketId = getReceiverSocketId(message.receiverId);
         if (receiverSocketId) {
             io.to(receiverSocketId).emit("messageDeleted", id);
         }
     } else if (message.groupId) {
-        // Optional: Notify group members if you want real-time deletes in groups
+        // Dispatches teardown notification to active group participant sockets.
         const group = await Group.findById(message.groupId);
         if (group) {
             group.members.forEach(memberId => {

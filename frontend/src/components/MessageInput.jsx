@@ -1,13 +1,13 @@
 import { useRef, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
 import toast from "react-hot-toast";
-import { ImageIcon, SendIcon, XIcon, Smile } from "lucide-react"; // Import Smile
-import EmojiPicker from "emoji-picker-react"; // Import EmojiPicker
+import { ImageIcon, SendIcon, XIcon, Smile } from "lucide-react";
+import EmojiPicker from "emoji-picker-react"; // Resolves specialized input utility.
 
 function MessageInput() {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false); // Toggle State
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false); // Tracks picker visibility.
 
   const fileInputRef = useRef(null);
   const { sendMessage } = useChatStore();
@@ -22,10 +22,10 @@ function MessageInput() {
         image: imagePreview,
       });
 
-      // Clear state
+      // Resets transient inputs.
       setText("");
       setImagePreview(null);
-      setShowEmojiPicker(false); // Close picker
+      setShowEmojiPicker(false); // Hides specialized input utility.
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (error) {
       console.error("Failed to send message:", error);
@@ -54,9 +54,9 @@ function MessageInput() {
   };
 
   return (
-    <div className="p-4 border-t border-slate-700/50 relative"> {/* Added relative for positioning */}
-      
-      {/* Emoji Picker Popup */}
+    <div className="p-4 border-t border-slate-700/50 relative"> {/* Establishes overlay context. */}
+
+      {/* Specialized input overlay. */}
       {showEmojiPicker && (
         <div className="absolute bottom-20 left-4 z-40 shadow-xl rounded-xl">
           <EmojiPicker
@@ -102,33 +102,31 @@ function MessageInput() {
           className="hidden"
         />
 
-        {/* Emoji Button */}
+        {/* Input utility toggle. */}
         <button
           type="button"
           onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-          className={`hidden sm:flex p-2 rounded-lg transition-colors ${
-            showEmojiPicker 
-              ? "bg-slate-700 text-cyan-500" 
+          className={`hidden sm:flex p-2 rounded-lg transition-colors ${showEmojiPicker
+              ? "bg-slate-700 text-cyan-500"
               : "bg-slate-800/50 text-slate-400 hover:text-slate-200"
-          }`}
+            }`}
         >
           <Smile className="w-5 h-5" />
         </button>
 
-        {/* Image Button */}
+        {/* Asset selection trigger. */}
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className={`hidden sm:flex p-2 rounded-lg transition-colors ${
-            imagePreview 
-              ? "text-cyan-500 bg-slate-700" 
+          className={`hidden sm:flex p-2 rounded-lg transition-colors ${imagePreview
+              ? "text-cyan-500 bg-slate-700"
               : "bg-slate-800/50 text-slate-400 hover:text-slate-200"
-          }`}
+            }`}
         >
           <ImageIcon className="w-5 h-5" />
         </button>
 
-        {/* Send Button */}
+        {/* Payload dispatch trigger. */}
         <button
           type="submit"
           disabled={!text.trim() && !imagePreview}

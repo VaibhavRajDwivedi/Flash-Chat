@@ -31,42 +31,39 @@ io.on('connection',(socket) => {
 
     io.emit('getOnlineUsers',Object.keys(userSocketMap));
 
-    // ============================================
-    // VIDEO CALL SIGNALING (The "Digital Courier")
-    // ============================================
-
-    // When User A wants to call User B, they send the "signal" (SDP) here.
+    // WebRTC signaling pipeline.
+    
+    // Routes initial SDP offer.
     socket.on("call-user", ({ userToCall, signalData, from, name }) => {
         const targetSocketId = getReceiverSocketId(userToCall);
         
         if (targetSocketId) {
-            // Forward the Offer to User B, including the name
+            // Dispatches payload to recipient.
             io.to(targetSocketId).emit("call-user", { signal: signalData, from, name });
         }
     });
 
-    // When User B accepts, they send their "signal" (Answer SDP) back.
+    // Routes subsequent SDP answer.
     socket.on("answer-call", (data) => {
         const targetSocketId = getReceiverSocketId(data.to);
         
         if (targetSocketId) {
-            // Forward the Answer back to User A (the caller)
+            // Completes handshake loop.
             io.to(targetSocketId).emit("call-accepted", data.signal);
         }
     });
 
-    // Handling ICE CANDIDATES (The "Connectivity Path")
-    // These are the network routes found by the browser.
+    // STUN/TURN routing resolution.
     socket.on("send-ice-candidate", ({ to, candidate }) => {
         const targetSocketId = getReceiverSocketId(to);
         
         if (targetSocketId) {
-            // Forward the candidate to the other peer so they can connect
+            // Exchanges finalized traversal paths.
             io.to(targetSocketId).emit("receive-ice-candidate", candidate);
         }
     });
 
-    // Handle Call Disconnection
+    // Manages peer teardown.
     socket.on("end-call", ({ to }) => {
         const targetSocketId = getReceiverSocketId(to);
         if (targetSocketId) {
@@ -74,7 +71,7 @@ io.on('connection',(socket) => {
         }
     });
 
-    // ============================================
+    // ---
 
 
     socket.on('disconnect',()=>{

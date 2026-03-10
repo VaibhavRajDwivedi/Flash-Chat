@@ -28,14 +28,13 @@ function ChatContainer() {
   }, [messages]);
 
   return (
-    // Changed Fragment <> to a Flex Container to hold Chat + SidePanel
+    // Establishes flexible layout structure.
     <div className="flex flex-1 h-full overflow-hidden">
 
-      {/* Wrapped existing Chat logic in a Left Column */}
+      {/* Isolates active viewport container. */}
       <div className="flex-1 flex flex-col min-w-0">
         <ChatHeader />
 
-        {/*bg-[url('/bg.png')] bg-cover bg-center bg-no-repeat*/}
         <div className="flex-1 overflow-y-auto p-4 bg-neutral-950">
           {messages.length > 0 && !isMessagesLoading ? (
             <div className="w-full space-y-6">
@@ -55,7 +54,7 @@ function ChatContainer() {
         <MessageInput />
       </div>
 
-      {/*Render the GroupInfo Panel if state is true */}
+      {/* Conditional metadata panel. */}
       {isRightPanelOpen && (
         <GroupInfo />
       )}

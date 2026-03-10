@@ -4,7 +4,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import { useState, useEffect } from "react";
 
 const GroupInfo = () => {
-    // 1. Using Zustand Store instead of props
+    // Extracts global state bindings.
     const { selectedUser, closeRightPanel, toggleAdmin, removeFromGroup, leaveGroup, allContacts, addMembersToGroup, getAllContacts } = useChatStore();
     const { onlineUsers, authUser } = useAuthStore();
     const [searchTerm, setSearchTerm] = useState("");
@@ -17,16 +17,16 @@ const GroupInfo = () => {
 
     const isGroup = !!selectedUser.members;
 
-    // 2. Helper to check if a user is an admin (checks the populated array)
+    // Validates administrative privileges array.
     const isAdmin = (userId) => {
         if (!selectedUser.admin) return false;
         return selectedUser.admin.some(admin => admin._id === userId);
     };
 
-    // Check if the current logged-in user is an admin
+    // Resolves local user administrative status.
     const amIAdmin = isGroup && isAdmin(authUser._id);
 
-    // Filter users to show only those NOT in the current group
+    // Derives eligible candidate roster.
     const availableUsers = allContacts.filter(u =>
         u._id !== authUser._id &&
         !selectedUser.members?.some(m => m._id === u._id) &&
@@ -43,7 +43,7 @@ const GroupInfo = () => {
         });
     };
 
-    // Handle Leave Group with a confirmation
+    // Intercepts departure with validation.
     const handleLeaveGroup = () => {
         if (window.confirm("Are you sure you want to leave this group?")) {
             leaveGroup(selectedUser._id);
@@ -52,7 +52,7 @@ const GroupInfo = () => {
 
     return (
         <div className="fixed inset-0 z-50 w-full bg-base-100 transition-all duration-700 lg:static lg:w-96 lg:border-l lg:border-base-300 h-full flex flex-col">
-            {/* Header */}
+            {/* Component title block. */}
             <div className="p-4 border-b border-base-300 flex items-center justify-between sticky top-0 bg-base-100 z-10">
                 <h3 className="font-semibold text-lg">{isGroup ? "Group Info" : "Contact Info"}</h3>
                 <button onClick={closeRightPanel} className="btn btn-ghost btn-sm btn-circle ">
@@ -61,7 +61,7 @@ const GroupInfo = () => {
             </div>
 
             <div className="flex-1 overflow-y-auto">
-                {/* Profile Image & Name */}
+                {/* Entity visual identity. */}
                 <div className="flex flex-col items-center gap-3 p-6 border-b border-base-300">
                     <div className="avatar">
                         <div className="w-24 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2 overflow-hidden">
@@ -83,7 +83,7 @@ const GroupInfo = () => {
                     </div>
                 </div>
 
-                {/* Add Member Search (Only for Admins) */}
+                {/* Administrative invitation controls. */}
                 {isGroup && amIAdmin && (
                     <div className="p-4 border-b border-base-300 bg-base-200/30">
                         <label className="text-xs font-bold text-base-content/50 uppercase mb-2 block">Add Member</label>
@@ -98,7 +98,7 @@ const GroupInfo = () => {
                             />
                         </div>
 
-                        {/* Search Results Dropdown */}
+                        {/* Candidate selection floating element. */}
                         {searchTerm && (
                             <div className="mt-2 max-h-48 overflow-y-auto border border-base-300 rounded-lg bg-base-100 shadow-xl">
                                 {availableUsers.length > 0 ? (
@@ -124,13 +124,13 @@ const GroupInfo = () => {
                     </div>
                 )}
 
-                {/* Date Info */}
+                {/* Entity creation metadata. */}
                 <div className="p-4 border-b border-base-300 flex gap-3 items-center text-sm text-base-content/70">
                     <Calendar className="size-5" />
                     <span>{isGroup ? "Created" : "Joined"}: {formatDate(selectedUser.createdAt)}</span>
                 </div>
 
-                {/* Members List */}
+                {/* Active participant directory. */}
                 {isGroup && (
                     <div className="p-4">
                         <h3 className="text-sm font-bold text-base-content/50 mb-4 uppercase tracking-wider">
@@ -191,7 +191,7 @@ const GroupInfo = () => {
                 )}
             </div>
 
-            {/* Leave Group Footer */}
+            {/* Destructive action container. */}
             {isGroup && (
                 <div className="p-4 border-t border-base-300 bg-base-100">
                     <button

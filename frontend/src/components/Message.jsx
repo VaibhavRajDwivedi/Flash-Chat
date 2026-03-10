@@ -4,18 +4,18 @@ import { useChatStore } from '../store/useChatStore';
 import { Trash2, MoreVertical } from "lucide-react";
 
 const Message = ({ message }) => {
-    // Access global state for authentication and chat actions
+    // Extracts session and action bindings.
     const { authUser } = useAuthStore();
     const { selectedUser, deleteMessage } = useChatStore();
 
-    // Check if the message belongs to the currently logged-in user
+    // Determines message authorship.
     const isOwnMessage = message.senderId === authUser._id;
 
-    // Dropdown state
+    // Tracks contextual menu visibility.
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const menuRef = useRef(null);
 
-    // Close menu when clicking outside
+    // Subscribes to global dismissal events.
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -38,7 +38,7 @@ const Message = ({ message }) => {
         setIsMenuOpen(false);
     };
 
-    // --- System Message Handling ---
+    // Renders automated platform notices.
     if (message.isSystemMessage) {
         return (
             <div className="flex justify-center my-6 w-full">
@@ -49,12 +49,12 @@ const Message = ({ message }) => {
         );
     }
 
-    // --- Sender Profile Logic ---
+    // Resolves author identity metadata.
     let senderProfilePic = isOwnMessage ? authUser.profilePic : selectedUser.profilePic;
     let senderName = null;
 
     if (selectedUser?.members) {
-        // In Group Chats: Search the members array to find the specific sender's details
+        // Extracts author from collective roster.
         const sender = selectedUser.members.find(m => m._id === message.senderId);
         if (sender) {
             senderProfilePic = sender.profilePic;
@@ -63,12 +63,12 @@ const Message = ({ message }) => {
             senderProfilePic = authUser.profilePic;
             senderName = "You";
         } else {
-            senderProfilePic = "/avatar.png"; // Fallback if sender data is missing
+            senderProfilePic = "/avatar.png"; // Provides resilient defaults.
             senderName = "User";
         }
     }
 
-    // --- Local State for Read More/Less ---
+    // Tracks textual expansion state.
     const [isExpanded, setIsExpanded] = useState(false);
     const MAX_LENGTH = 300;
     const isLongMessage = message.text && message.text.length > MAX_LENGTH;
@@ -76,7 +76,7 @@ const Message = ({ message }) => {
     return (
         <div className={`chat ${isOwnMessage ? "chat-end" : "chat-start"}`}>
 
-            {/* Avatar Display: Only shown in Group Chats */}
+            {/* Conditional author portrait. */}
             {selectedUser?.members && (
                 <div className="chat-image avatar">
                     <div className="size-10 rounded-full border">
@@ -88,19 +88,19 @@ const Message = ({ message }) => {
                 </div>
             )}
 
-            {/* Sender Name: Only shown in Group Chats for incoming messages */}
+            {/* Conditional author attribution. */}
             {selectedUser?.members && !isOwnMessage && (
                 <div className="chat-header mb-1">
                     <span className="text-xs opacity-50 font-bold">{senderName}</span>
                 </div>
             )}
 
-            {/* Message Bubble Container */}
+            {/* Core payload wrapper. */}
             <div
                 className={`chat-bubble group relative !overflow-visible rounded-xl before:hidden break-all max-w-[200px] md:max-w-lg lg:max-w-2xl ${isOwnMessage ? "bg-indigo-600 text-white" : "bg-zinc-800 text-white"
                     }`}
             >
-                {/* Image Attachment Rendering */}
+                {/* Multimedia payload display. */}
                 {message.image && (
                     <img
                         src={message.image}
@@ -109,7 +109,7 @@ const Message = ({ message }) => {
                     />
                 )}
 
-                {/* Text Content with Read More/Less logic */}
+                {/* Truncated textual payload. */}
                 {message.text && (
                     <p>
                         {isExpanded || !isLongMessage
@@ -126,7 +126,7 @@ const Message = ({ message }) => {
                     </p>
                 )}
 
-                {/* Message Timestamp */}
+                {/* Chronological metadata. */}
                 <p className="text-[10px] mt-1 opacity-70 block text-right">
                     {new Date(message.createdAt).toLocaleTimeString(undefined, {
                         hour: "2-digit",
@@ -134,10 +134,10 @@ const Message = ({ message }) => {
                     })}
                 </p>
 
-                {/* Message Options Menu (Three Dots) - Only for own messages */}
+                {/* Authorship mutation controls. */}
                 {isOwnMessage && (
                     <div className="absolute top-2 right-2" ref={menuRef}>
-                        {/* Trigger Button - Visible on hover or when menu is open */}
+                        {/* Contextual menu activator. */}
                         <button
                             onClick={() => setIsMenuOpen(!isMenuOpen)}
                             className={`p-1 rounded-full bg-black/20 hover:bg-black/40 transition-colors ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"
@@ -147,7 +147,7 @@ const Message = ({ message }) => {
                             <MoreVertical size={16} />
                         </button>
 
-                        {/* Dropdown Menu */}
+                        {/* Explorable action list. */}
                         {isMenuOpen && (
                             <div className="absolute right-0 mt-1 w-32 bg-zinc-900 border border-zinc-800 rounded-lg shadow-lg z-50 overflow-hidden">
                                 <button

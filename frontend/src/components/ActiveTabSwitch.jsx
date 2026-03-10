@@ -10,31 +10,29 @@ function ActiveTabSwitch() {
   return (
     <>
       <div className="flex items-center justify-between px-2 m-2 gap-2">
-        {/* Tab Switcher */}
+        {/* View context toggle. */}
         <div className="tabs tabs-boxed bg-transparent p-1 flex-1">
           <button
             onClick={() => setActiveTab("chats")}
-            className={`tab flex-1 transition-all ${
-              activeTab === "chats"
+            className={`tab flex-1 transition-all ${activeTab === "chats"
                 ? "bg-cyan-500/20 text-cyan-500 font-medium"
                 : "text-slate-400 hover:text-slate-200"
-            }`}
+              }`}
           >
             Chats
           </button>
           <button
             onClick={() => setActiveTab("contacts")}
-            className={`tab flex-1 transition-all ${
-              activeTab === "contacts"
+            className={`tab flex-1 transition-all ${activeTab === "contacts"
                 ? "bg-cyan-500/20 text-cyan-500 font-medium"
                 : "text-slate-400 hover:text-slate-200"
-            }`}
+              }`}
           >
             Contacts
           </button>
         </div>
 
-        {/* Create Group Button (+) */}
+        {/* Entity creation trigger. */}
         <button
           onClick={() => setShowCreateGroup(true)}
           className="btn btn-circle btn-sm btn-ghost text-slate-400 hover:text-cyan-500 hover:bg-cyan-500/10"
@@ -44,7 +42,7 @@ function ActiveTabSwitch() {
         </button>
       </div>
 
-      {/* Render the Modal if state is true */}
+      {/* Conditional creation overlay. */}
       {showCreateGroup && (
         <CreateGroupModal onClose={() => setShowCreateGroup(false)} />
       )}

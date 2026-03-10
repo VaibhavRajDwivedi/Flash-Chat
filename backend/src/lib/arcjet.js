@@ -5,23 +5,20 @@ import { ENV } from "./env.js";
 const aj = arcjet({
   key: ENV.ARCJET_KEY,
   rules: [
-    // Shield protects your app from common attacks e.g. SQL injection
+    // Mitigates baseline vulnerabilities.
     shield({ mode: "LIVE" }),
-    // Create a bot detection rule
+    // Configures automated traffic filtering.
     detectBot({
-      mode: "LIVE", // Blocks requests. Use "DRY_RUN" to log only
-      // Block all bots except the following
+      mode: "LIVE", // Enforces strict blocking.
+      // Whitelists allowed actors.
       allow: [
-        "CATEGORY:SEARCH_ENGINE", // Google, Bing, etc
-        // Uncomment to allow these other common bot categories
-        // See the full list at https://arcjet.com/bot-list
-        //"CATEGORY:MONITOR", // Uptime monitoring services
-        //"CATEGORY:PREVIEW", // Link previews e.g. Slack, Discord
+        "CATEGORY:SEARCH_ENGINE", // Permits indexers.
+        // Disabled monitoring and preview agents.
       ],
     }),
-    // Create a token bucket rate limit. Other algorithms are supported.
+    // Enforces sliding window constraints.
     slidingWindow({
-      mode: "LIVE", // Blocks requests. Use "DRY_RUN" to log only
+      mode: "LIVE", // Enforces strict blocking.
       max: 100,
       interval: 60,
     }),

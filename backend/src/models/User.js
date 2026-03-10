@@ -17,11 +17,11 @@ const userSchema = new mongoose.Schema({
     },
     profilePic : {
         type: String,
-        default:"", // URL of the profile picture
+        default:"", // Maintains remote asset path.
     },
 },
 {
-    timestamps:true,    // created at and updated at
+    timestamps:true,    // Drives chronological sorting and caching.
 })
 
 const User = mongoose.model("User", userSchema);

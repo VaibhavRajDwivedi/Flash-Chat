@@ -5,13 +5,13 @@ import NoChatsFound from "./NoChatsFound";
 import { useAuthStore } from "../store/useAuthStore";
 
 function ChatsList() {
-  const { 
-    chats, 
-    getMyChatPartners, 
-    isUserLoading, 
-    selectedUser, 
+  const {
+    chats,
+    getMyChatPartners,
+    isUserLoading,
+    selectedUser,
     setSelectedUser,
-    // Add Group Data
+    // Integrates collective entities.
     groups,
     getGroups,
     isGroupsLoading
@@ -21,21 +21,21 @@ function ChatsList() {
 
   useEffect(() => {
     getMyChatPartners();
-    getGroups(); // <--- Fetch groups on load
+    getGroups(); // Hydrates collective directory immediately.
   }, [getMyChatPartners, getGroups]);
 
-  // Show skeleton if EITHER users or groups are loading
+  // Displays unified loading anticipation.
   if (isUserLoading || isGroupsLoading) {
     return <UsersLoadingSkeleton />;
   }
 
-  // Show "No Chats" only if BOTH lists are empty
+  // Renders comprehensive empty state.
   if (chats.length === 0 && groups.length === 0) return <NoChatsFound />;
 
   return (
     <div className="flex-1 overflow-y-auto">
-      
-      {/* --- GROUPS SECTION --- */}
+
+      {/* Collective conversations chunk. */}
       {groups.length > 0 && (
         <div className="mb-6">
           <div className="px-5 text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2 mt-2">
@@ -50,7 +50,7 @@ function ChatsList() {
                 ${selectedUser?._id === group._id ? "bg-base-300 ring-1 ring-base-300" : "hover:bg-base-300"}
               `}
             >
-              {/* Group Avatar (First Letter) */}
+              {/* Typographic visual identity. */}
               <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
                 {group.name.charAt(0).toUpperCase()}
               </div>
@@ -66,17 +66,17 @@ function ChatsList() {
         </div>
       )}
 
-      {/* --- DIRECT MESSAGES SECTION --- */}
+      {/* Private conversations chunk. */}
       {chats.length > 0 && (
         <div className="mb-4">
-           {/* Only show header if we also have groups (to separate them) */}
-           {groups.length > 0 && (
-             <div className="px-5 text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
-               Direct Messages
-             </div>
-           )}
-           
-           {chats.map((chat) => (
+          {/* Renders conditional section delimiter. */}
+          {groups.length > 0 && (
+            <div className="px-5 text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
+              Direct Messages
+            </div>
+          )}
+
+          {chats.map((chat) => (
             <div
               key={chat._id}
               onClick={() => setSelectedUser(chat)}

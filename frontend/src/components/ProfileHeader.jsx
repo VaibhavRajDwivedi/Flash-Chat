@@ -27,7 +27,7 @@ function ProfileHeader() {
     <div className="p-6 border-b border-slate-700/50">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          {/* AVATAR */}
+          {/* User visual identity. */}
           <div className="avatar online">
             <button
               className="size-14 rounded-full overflow-hidden relative group"
@@ -52,7 +52,7 @@ function ProfileHeader() {
             />
           </div>
 
-          {/* USERNAME & ONLINE TEXT */}
+          {/* User metadata. */}
           <div>
             <h3 className="text-slate-200 font-medium text-base max-w-[180px] truncate">
               {authUser.fullName}
@@ -62,9 +62,9 @@ function ProfileHeader() {
           </div>
         </div>
 
-        {/* BUTTONS */}
+        {/* Action controls. */}
         <div className="flex gap-4 items-center">
-          {/* LOGOUT BTN */}
+          {/* Session termination trigger. */}
           <button
             className="text-slate-400 hover:text-slate-200 transition-colors"
             onClick={logout}

@@ -48,7 +48,7 @@ const VideoCall = () => {
         ],
     };
 
-    // Debug Configuration
+    // Validates critical infrastructure.
     useEffect(() => {
         if (!rtcConfig.iceServers[1].username || !rtcConfig.iceServers[1].credential) {
             console.error("TURN credentials are missing! Check your .env setup.");
@@ -56,17 +56,17 @@ const VideoCall = () => {
         }
     }, []);
 
-    // Main WebRTC Logic
+    // Orchestrates peer connection lifecycle.
     useEffect(() => {
-        let isMounted = true; // Protects against React Strict Mode double-mounting
+        let isMounted = true; // Prevents duplicate connection initialization.
         let stream = null;
         let pc = null;
-        
-        // Localized queues for this specific connection
+
+        // Buffers connection candidates.
         let incomingCandidates = [];
         let outgoingCandidates = [];
 
-        // 1. Process received candidates (from the other peer)
+        // Hydrates remote connection targets.
         const processCandidateQueue = async () => {
             if (!pc || !pc.remoteDescription) return;
 
@@ -77,10 +77,10 @@ const VideoCall = () => {
                     console.warn("Skipping invalid ICE candidate:", e.message);
                 }
             }
-            incomingCandidates = []; // Clear the queue after processing
+            incomingCandidates = []; // Resets candidate buffer.
         };
 
-        // 2. Flush outgoing candidates (to the other peer) once connected
+        // Dispatches buffered connection targets.
         const flushOutgoingCandidates = () => {
             if (!pc || !pc.remoteDescription) return;
 
@@ -90,7 +90,7 @@ const VideoCall = () => {
                     candidate: candidate,
                 });
             });
-            outgoingCandidates = []; // Clear the queue after sending
+            outgoingCandidates = []; // Resets dispatch buffer.
         };
 
         const setupMediaAndConnection = async () => {
@@ -100,7 +100,7 @@ const VideoCall = () => {
             if (!tId) return;
 
             try {
-                // --- Get Media ---
+                // Acquires hardware interfaces.
                 try {
                     stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
                 } catch (err) {
@@ -110,16 +110,16 @@ const VideoCall = () => {
                     toast.error("Camera unavailable. Switched to Audio only.");
                 }
 
-                // If component unmounted while waiting for camera permissions, stop and exit
+                // Cleans up aborted hardware requests.
                 if (!isMounted) {
                     stream.getTracks().forEach(track => track.stop());
-                    return; 
+                    return;
                 }
 
                 setLocalStream(stream);
                 if (localVideoRef.current) localVideoRef.current.srcObject = stream;
 
-                // --- Create PeerConnection ---
+                // Initializes WebRTC session.
                 pc = new RTCPeerConnection(rtcConfig);
                 peerConnectionRef.current = pc;
 
@@ -144,35 +144,35 @@ const VideoCall = () => {
                     }
                 };
 
-                // --- ICE Candidate Gathering ---
+                // Discovers network pathways.
                 pc.onicecandidate = (event) => {
                     if (event.candidate && targetIdRef.current) {
-                        // FIX: Only send candidates if the remote description is ready
+                        // Ensures remote peer readiness.
                         if (pc.remoteDescription) {
                             socket.emit("send-ice-candidate", {
                                 to: targetIdRef.current,
                                 candidate: event.candidate,
                             });
                         } else {
-                            // Otherwise, queue them up!
+                            // Buffers unsendable candidates.
                             outgoingCandidates.push(event.candidate);
                         }
                     }
                 };
 
-                // --- Signaling (Offer/Answer) ---
+                // Negotiates session parameters.
                 if (isIncoming && callData?.signal) {
-                    // RECEIVER FLOW
+                    // Inbound session handling.
                     await pc.setRemoteDescription(new RTCSessionDescription(callData.signal));
-                    await processCandidateQueue(); // Process any early candidates
+                    await processCandidateQueue(); // Hydrates queued network targets.
 
                     const answer = await pc.createAnswer();
                     await pc.setLocalDescription(answer);
-                    
-                    flushOutgoingCandidates(); // Send any candidates we gathered while creating the answer
+
+                    flushOutgoingCandidates(); // Dispatches queued network targets.
                     answerCall(callData.from, answer);
                 } else {
-                    // CALLER FLOW
+                    // Outbound session initialization.
                     const offer = await pc.createOffer();
                     await pc.setLocalDescription(offer);
                     if (selectedUser?._id) {
@@ -188,15 +188,13 @@ const VideoCall = () => {
 
         setupMediaAndConnection();
 
-        // -------------------------------------------
-        // SOCKET LISTENERS
-        // -------------------------------------------
+        // Session signaling listeners.
         const handleCallAccepted = async (signal) => {
             if (pc && !pc.currentRemoteDescription) {
                 try {
                     await pc.setRemoteDescription(new RTCSessionDescription(signal));
-                    await processCandidateQueue(); 
-                    flushOutgoingCandidates(); // FIX: Safely send the Caller's queued ICE candidates now!
+                    await processCandidateQueue();
+                    flushOutgoingCandidates(); // Safely flushes queued candidates.
                 } catch (err) {
                     console.error("Error accepting call signal:", err);
                 }
@@ -220,9 +218,9 @@ const VideoCall = () => {
             socket.on("receive-ice-candidate", handleIceCandidate);
         }
 
-        // CLEANUP
+        // Tears down session resources.
         return () => {
-            isMounted = false; // Flag component as unmounted
+            isMounted = false; // Prevents memory leaks.
             if (stream) stream.getTracks().forEach((track) => track.stop());
             if (pc) pc.close();
 
@@ -232,9 +230,9 @@ const VideoCall = () => {
             }
         };
 
-    }, [socket, isIncoming, callData, selectedUser]); // Ensure strict dependency array
+    }, [socket, isIncoming, callData, selectedUser]); // Prevents stale closure bugs.
 
-    // Toggle Media Tracks
+    // Manages hardware track states.
     useEffect(() => {
         if (localStream) {
             const videoTrack = localStream.getVideoTracks()[0];
@@ -246,7 +244,7 @@ const VideoCall = () => {
 
     return (
         <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center">
-            {/* REMOTE VIDEO */}
+            {/* Peer viewport. */}
             <div className="relative w-full h-full md:w-[90%] md:h-[90%] bg-zinc-900 md:rounded-2xl overflow-hidden shadow-2xl flex items-center justify-center">
                 <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
                 <div className="absolute top-4 left-4 bg-black/50 px-4 py-2 rounded-full text-white text-sm backdrop-blur-sm">
@@ -254,7 +252,7 @@ const VideoCall = () => {
                 </div>
             </div>
 
-            {/* LOCAL VIDEO */}
+            {/* Local viewport. */}
             <div className="absolute bottom-24 right-4 w-32 h-48 md:bottom-10 md:right-10 md:w-48 md:h-36 bg-zinc-800 rounded-xl overflow-hidden border-2 border-white/20 shadow-2xl z-20">
                 <video ref={localVideoRef} autoPlay playsInline muted className={`w-full h-full object-cover ${!isCameraOn ? "hidden" : ""}`} />
                 {!isCameraOn && (
@@ -264,7 +262,7 @@ const VideoCall = () => {
                 )}
             </div>
 
-            {/* CONTROL BAR */}
+            {/* Hardware toggles. */}
             <div className="absolute bottom-8 flex items-center gap-6 bg-zinc-900/90 backdrop-blur-md p-4 rounded-full border border-white/10 shadow-2xl z-30">
                 <button onClick={toggleMic} className={`p-4 rounded-full transition-all duration-200 hover:scale-110 ${isMicOn ? "bg-zinc-700 hover:bg-zinc-600" : "bg-red-500/20 text-red-500 border border-red-500/50"}`}>
                     {isMicOn ? <Mic className="w-6 h-6 text-white" /> : <MicOff className="w-6 h-6" />}

@@ -40,10 +40,10 @@ function ChatHeader() {
 
   return (
     <div className="flex justify-between items-center bg-slate-800/50 border-b border-slate-700/50 max-h-[84px] px-6 flex-1 py-3">
-      {/* LEFT SIDE (User Info) */}
+      {/* Entity identity container. */}
       <div className="flex items-center gap-3 flex-1 overflow-hidden">
 
-        {/* Back Button */}
+        {/* Navigation primitive. */}
         <button
           className="p-2 rounded-full hover:bg-base-300 mr-2 transition-colors"
           onClick={() => setSelectedUser(null)}
@@ -51,7 +51,7 @@ function ChatHeader() {
           <ArrowLeft className="w-5 h-5" />
         </button>
 
-        {/* Clickable Info Area */}
+        {/* Interactive metadata block. */}
         <div
           onClick={toggleRightPanel}
           className="flex items-center gap-3 cursor-pointer hover:bg-slate-700/50 p-2 rounded-lg transition-all flex-1"
@@ -73,9 +73,9 @@ function ChatHeader() {
         </div>
       </div>
 
-      {/* RIGHT SIDE (Actions) */}
+      {/* Contextual action container. */}
       <div className="flex items-center gap-2 ml-4">
-        {/* Only show Call button for 1-on-1 chats */}
+        {/* Restricts telephony to direct pairings. */}
         {!isGroup && (
           <button
             onClick={handleStartCall}

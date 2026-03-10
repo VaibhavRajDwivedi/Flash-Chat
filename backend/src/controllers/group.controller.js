@@ -8,9 +8,9 @@ import sendSystemMessage from "../lib/sendSystemMessage.js";
 export const createGroup = async (req, res) => {
   try {
     const { name, members } = req.body;
-    const creatorId = req.user._id; // The user creating the group is the admin
+    const creatorId = req.user._id; // Assigns creator as initial administrator.
 
-    // 1. Basic Validation
+    // Validates payload integrity.
     if (!name) {
       return res.status(400).json({ message: "Group name is required" });
     }
@@ -18,11 +18,10 @@ export const createGroup = async (req, res) => {
       return res.status(400).json({ message: "A group must have at least 2 other members" });
     }
 
-    // 2. Add the Admin to the members list (so they are part of the chat too!)
-    // We use Set to prevent duplicate IDs just in case
+    // Ensures creator inclusion without duplication.
     const allMembers = [...new Set([...members, creatorId])];
 
-    // 3. Create the Group in Database
+    // Persists new group entity.
     const newGroup = new Group({
       name,
       admin : [creatorId],
@@ -31,17 +30,17 @@ export const createGroup = async (req, res) => {
 
     await newGroup.save();
 
-    // Populate the members so frontend gets full user details immediately
+    // Eagerly loads member details for immediate rendering.
     await newGroup.populate("members", "-password");
     await newGroup.populate("admin", "-password");
 
     newGroup.members.forEach((memberId) => {
-        if (memberId.toString() === creatorId.toString()) return; // Skip sender
+        if (memberId.toString() === creatorId.toString()) return; // Prevents echo to initiator.
 
         const socketId = getReceiverSocketId(memberId.toString());
         
         if (socketId) {
-            io.to(socketId).emit("newGroup", newGroup); // <--- Emit event
+            io.to(socketId).emit("newGroup", newGroup); // Dispatches creation payload to peers.
         }
     });
 
@@ -56,7 +55,7 @@ export const getMyGroups = async (req, res) => {
   try {
     const myId = req.user._id;
 
-    // Find all groups where the "members" array contains my ID
+    // Retrieves joined groups via inclusion check.
     const groups = await Group.find({ members: myId }).populate("members", "-password").populate("admin", "-password");
 
     res.status(200).json(groups);
@@ -74,37 +73,36 @@ export const toggleGroupAdmin = async (req, res) => {
         const group = await Group.findById(groupId);
         if (!group) return res.status(404).json({ message: "Group not found" });
 
-        // Security: Only an existing admin can change admins
+        // Enforces administrative authorization.
         const isRequesterAdmin = group.admin.includes(requesterId);
         if (!isRequesterAdmin) {
             return res.status(403).json({ message: "Only admins can change roles" });
         }
 
-        // Toggle Logic
+        // Evaluates promotion versus demotion.
         const isTargetAlreadyAdmin = group.admin.includes(userId);
 
         if (isTargetAlreadyAdmin) {
-            // Remove from admin (Filter out the ID)
-            // Prevent removing the LAST admin (optional safety)
+            // Prevents administrative lockout during demotion.
             if (group.admin.length === 1) return res.status(400).json({ message: "Group must have at least one admin" });
             
             group.admin = group.admin.filter(id => id.toString() !== userId.toString());
         } else {
-            // Add to admin
+            // Promotes member to administrator.
             group.admin.push(userId);
         }
 
         await group.save();
         
-        // Re-populate to send full updated object back
+        // Refreshes entity representation post-mutation.
         await group.populate("members", "-password");
         await group.populate("admin", "-password");
 
-        // Broadcast update to everyone in group
+        // Propagates role changes to participants.
         group.members.forEach((member) => {
             const socketId = getReceiverSocketId(member._id.toString());
             if (socketId) {
-                io.to(socketId).emit("groupUpdated", group); // <--- Listen for this in Frontend!
+                io.to(socketId).emit("groupUpdated", group); // Triggers client-side state update.
             }
         });
 
@@ -125,30 +123,30 @@ export const removeMember = async (req, res) => {
     const group = await Group.findById(groupId);
     if (!group) return res.status(404).json({ message: "Group not found" });
 
-    // Check if the person asking is actually an admin
+    // Validates requester administrative privileges.
     const isRequesterAdmin = group.admin.some(id => id.toString() === requesterId.toString());
     if (!isRequesterAdmin) return res.status(403).json({ message: "Unauthorized" });
 
-    // Remove user from both arrays
+    // Purges member from all group collections.
     group.members = group.members.filter(id => id.toString() !== userId);
     group.admin = group.admin.filter(id => id.toString() !== userId);
 
     await group.save();
     await group.populate("members admin", "-password");
 
-    // Notify remaining members
+    // Alerts active participants of roster change.
     group.members.forEach(member => {
       const socketId = getReceiverSocketId(member._id.toString());
       if (socketId) io.to(socketId).emit("groupUpdated", group);
     });
 
-    // Notify the kicked user so their UI clears
+    // Triggers client-side cleanup for removed user.
     const kickedSocketId = getReceiverSocketId(userId);
     if (kickedSocketId) {
       io.to(kickedSocketId).emit("groupUpdated", { _id: groupId, wasRemoved: true, name: group.name });
     }
 
-    // System Message for Member Removal
+    // Dispatches automated removal notification.
     const kickedUser = await User.findById(userId);
     if (kickedUser) {
         await sendSystemMessage(
@@ -166,7 +164,7 @@ export const removeMember = async (req, res) => {
 
 
 
-// Leave Group Logic
+    // Handles voluntary participant exit.
 export const leaveGroup = async (req, res) => {
   try {
     const { groupId } = req.body;
@@ -177,21 +175,21 @@ export const leaveGroup = async (req, res) => {
 
     const isAdmin = group.admin.some((id) => id.toString() === userId.toString());
 
-    // SAFETY CHECK: If last admin tries to leave
+    // Prevents orphaned groups via early exit.
     if (isAdmin && group.admin.length === 1 && group.members.length > 1) {
       return res.status(400).json({ 
         message: "You are the only admin. Assign someone else as admin before leaving." 
       });
     }
 
-    // Create a System Message
+    // Dispatches automated departure notification.
     await sendSystemMessage(groupId, `${req.user.fullName} has left the group`, userId);
 
-    // Remove user from members and admin arrays
+    // Purges exiting member from collections.
     group.members = group.members.filter((id) => id.toString() !== userId.toString());
     group.admin = group.admin.filter((id) => id.toString() !== userId.toString());
 
-    // If no members left, delete the group entirely
+    // Garbage collects empty groups.
     if (group.members.length === 0) {
       await Group.findByIdAndDelete(groupId);
       return res.status(200).json({ message: "Group deleted as no members left" });
@@ -200,7 +198,7 @@ export const leaveGroup = async (req, res) => {
     await group.save();
     await group.populate("members admin", "-password");
 
-    // Broadcast to remaining members
+    // Alerts active participants of roster change.
     group.members.forEach((member) => {
       const socketId = getReceiverSocketId(member._id.toString());
       if (socketId) io.to(socketId).emit("groupUpdated", group);
@@ -215,37 +213,36 @@ export const leaveGroup = async (req, res) => {
 
 export const addMembers = async (req, res) => {
   try {
-    const { groupId, newMembers } = req.body; // newMembers is an array of IDs
+    const { groupId, newMembers } = req.body; // Expects array of candidate identifiers.
     const requesterId = req.user._id;
 
     const group = await Group.findById(groupId);
     if (!group) return res.status(404).json({ message: "Group not found" });
 
-    // 1. Only admins can add new people
+    // Enforces administrative authorization.
     const isRequesterAdmin = group.admin.some(id => id.toString() === requesterId.toString());
     if (!isRequesterAdmin) return res.status(403).json({ message: "Only admins can add members" });
 
-    // 2. Filter out users who are already in the group
+    // Prevents duplicate memberships.
     const usersToAdd = newMembers.filter(id => !group.members.includes(id));
 
     if (usersToAdd.length === 0) {
       return res.status(400).json({ message: "Users are already members of this group" });
     }
 
-    // 3. Update the group
+    // Appends validated candidates.
     group.members.push(...usersToAdd);
     await group.save();
     
     await group.populate("members admin", "-password");
 
-    // 4. Notify everyone in the group (including new ones)
+    // Propagates roster changes to all peers.
     group.members.forEach((member) => {
       const socketId = getReceiverSocketId(member._id.toString());
       if (socketId) io.to(socketId).emit("groupUpdated", group);
     });
 
-    // 5. System Message for Added Members
-    // Fetch names of added users
+    // Resolves candidate names for notification dispatch.
     const addedUsers = await User.find({ _id: { $in: usersToAdd } });
     const addedNames = addedUsers.map(u => u.fullName).join(", ");
     

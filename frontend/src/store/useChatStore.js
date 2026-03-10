@@ -4,9 +4,7 @@ import toast from "react-hot-toast";
 import { useAuthStore } from "./useAuthStore";
 
 export const useChatStore = create((set, get) => ({
-    // =================================================================
-    // EXISTING CHAT & GROUP STATE
-    // =================================================================
+    // Manages core chat and group collections.
     allContacts: [],
     chats: [],
     messages: [],
@@ -19,18 +17,14 @@ export const useChatStore = create((set, get) => ({
     groups: [],
     isRightPanelOpen: false,
 
-    // =================================================================
-    // NEW: VIDEO CALL STATE
-    // =================================================================
-    isCalling: false,       // Are we in a call (outgoing or ongoing)?
-    isIncoming: false,      // Is someone calling us?
-    callData: null,         // Data of the incoming caller { from, signal, name }
+    // Tracks WebRTC connection lifecycle.
+    isCalling: false,       // Tracks active session status.
+    isIncoming: false,      // Tracks incoming ring state.
+    callData: null,         // Caches incoming caller metadata.
     isMicOn: true,
     isCameraOn: true,
 
-    // =================================================================
-    // ACTIONS
-    // =================================================================
+    // Global state mutators.
 
     
 
@@ -39,7 +33,7 @@ export const useChatStore = create((set, get) => ({
     },
 
     setSelectedUser: (selectedUser) => {
-        // If we select a user, close the right panel to keep UI clean
+        // Defers panel closure maximizing readability.
         set({ selectedUser, isRightPanelOpen: false });
     },
 
@@ -96,23 +90,23 @@ export const useChatStore = create((set, get) => ({
             isOptimistic: true,
         };
         
-        // 1. Safely add the optimistic message to the LATEST state
+        // Appends tentative message representation.
         set((state) => ({ messages: [...state.messages, optimisticMessage] }));
         
         try {
             const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
             
             set((state) => {
-                // 2. Check if the WebSocket already sneaked in and added the real message
+                // Validates socket race conditions.
                 const alreadyExists = state.messages.some(msg => msg._id === res.data._id);
 
                 if (alreadyExists) {
-                    // Socket beat us to it! Just clean up the temporary optimistic message.
+                    // Resolves optimistic payload duplication.
                     return {
                         messages: state.messages.filter(msg => msg._id !== tempId)
                     };
                 } else {
-                    // HTTP finished first! Swap the temporary message with the real one.
+                    // Commits confirmed message payload.
                     return {
                         messages: state.messages.map((msg) =>
                             msg._id === tempId ? res.data : msg
@@ -135,7 +129,7 @@ export const useChatStore = create((set, get) => ({
         try {
         await axiosInstance.delete(`/messages/${messageId}`);
         
-        // Remove from local state immediately
+        // Purges local cache immediately.
         set({
             messages: get().messages.filter((message) => message._id !== messageId),
         });
@@ -144,9 +138,7 @@ export const useChatStore = create((set, get) => ({
         toast.error(error.response.data.error);
         }
     },
-    // =================================================================
-    // VIDEO CALL ACTIONS
-    // =================================================================
+    // WebRTC signaling mutators.
 
     initiateCall: (targetUserId, signalData) => {
         const socket = useAuthStore.getState().socket;
@@ -158,7 +150,7 @@ export const useChatStore = create((set, get) => ({
             userToCall: targetUserId,
             signalData: signalData,
             from: authUser._id,
-            name: authUser.fullName // Optional: Send name for display
+            name: authUser.fullName // Provides friendly caller attribution.
         });
 
         set({ isCalling: true, isIncoming: false });
@@ -181,7 +173,7 @@ export const useChatStore = create((set, get) => ({
     },
 
     endCall: (userId) => {
-        // Reset UI state
+        // Clears session metadata.
         set({
             isCalling: false,
             isIncoming: false,
@@ -190,7 +182,7 @@ export const useChatStore = create((set, get) => ({
             isCameraOn: true
         });
         
-        // Notify the other user that the call has ended
+        // Dispatches teardown notification.
         const socket = useAuthStore.getState().socket;
         if (socket && userId) {
             socket.emit("end-call", { to: userId });
@@ -200,9 +192,7 @@ export const useChatStore = create((set, get) => ({
     toggleMic: () => set((state) => ({ isMicOn: !state.isMicOn })),
     toggleCamera: () => set((state) => ({ isCameraOn: !state.isCameraOn })),
 
-    // =================================================================
-    // GROUP ACTIONS
-    // =================================================================
+    // Group management mutators.
 
     toggleAdmin: async (groupId, userId) => {
         try {
@@ -280,51 +270,49 @@ export const useChatStore = create((set, get) => ({
         }
     },
 
-    // =================================================================
-    // SOCKET LISTENERS
-    // =================================================================
+    // Real-time event subscriptions.
 
     subscribeToMessages: () => {
         const socket = useAuthStore.getState().socket;
         if (!socket) return;
 
-        // --- 1. NEW GROUP LISTENER (Sidebar) ---
+        // Subscribes to collective invitations.
         socket.on("newGroup", (newGroup) => {
             set({ groups: [...get().groups, newGroup] });
             toast.success(`You were added to group: ${newGroup.name}`);
         });
 
-        // --- 2. MESSAGE LISTENER (Chat Area) ---
+        // Subscribes to inbound payloads.
         socket.on('newMessage', (newMessage) => {
             const { chats, selectedUser } = get();
             
-            // ... (your existing chat list update logic here) ...
+            // Syncs contextual chat lists.
 
-            // B. Update Messages (If chat is open)
+            // Renders active conversation payloads.
             if (!selectedUser) return;
 
             const isMessageSentFromSelectedUser = newMessage.senderId === selectedUser._id;
             const isMessageForCurrentGroup = newMessage.groupId && newMessage.groupId === selectedUser._id;
 
-            // Notice we also check if you are testing by chatting with yourself!
+            // Handles reflexive testing loops.
             const isChattingWithMyself = selectedUser._id === useAuthStore.getState().authUser._id;
 
             if (isMessageSentFromSelectedUser || isMessageForCurrentGroup || isChattingWithMyself) {
                 set((state) => {
-                    // Prevent duplicate if HTTP already added it!
+                    // Resolves socket versus HTTP race conditions.
                     const isAlreadyAdded = state.messages.some((msg) => msg._id === newMessage._id);
-                    if (isAlreadyAdded) return state; // Do nothing if it's already there
+                    if (isAlreadyAdded) return state; // Bypasses redundant insertions.
 
                     return { messages: [...state.messages, newMessage] };
                 });
             }
         });
 
-        // --- 3. GROUP UPDATED LISTENER ---
+        // Subscribes to roster mutations.
         socket.on("groupUpdated", (updatedGroup) => {
             const { groups, selectedUser } = get();
 
-            // If removed
+            // Handles eviction cases.
             if (updatedGroup.wasRemoved) {
                 set({ groups: groups.filter(g => g._id !== updatedGroup._id) });
                 if (selectedUser?._id === updatedGroup._id) {
@@ -334,26 +322,26 @@ export const useChatStore = create((set, get) => ({
                 return;
             }
 
-            // Update sidebar list
+            // Refreshes collective directory.
             const updatedGroups = groups.map(g =>
                 g._id === updatedGroup._id ? updatedGroup : g
             );
             set({ groups: updatedGroups });
 
-            // Update active view
+            // Syncs currently focused entity.
             if (selectedUser && selectedUser._id === updatedGroup._id) {
                 set({ selectedUser: updatedGroup });
             }
         });
 
-        // --- 4. VIDEO CALL LISTENER ---
+        // Subscribes to incoming ring events.
         socket.on("call-user", (data) => {
-            // data = { from, signal, name }
+            // Expects origin signature and metadata.
             console.log("Incoming Call detected:", data);
             set({ isIncoming: true, callData: data });
         });
 
-        // --- 5. CALL ENDED LISTENER ---
+        // Subscribes to teardown events.
         socket.on("call-ended", () => {
             set({
                 isCalling: false,
@@ -362,11 +350,11 @@ export const useChatStore = create((set, get) => ({
                 isMicOn: true,
                 isCameraOn: true
             });
-            toast.dismiss(); // Dismiss any lingering toasts
+            toast.dismiss(); // Purges transient notifications.
             toast("Call ended", { icon: "📞" });
         });
 
-        // --- 6. MESSAGE DELETED LISTENER ---  
+        // Subscribes to payload removals.
         socket.on("messageDeleted", (messageId) => {
             set({
                 messages: get().messages.filter((message) => message._id !== messageId),
@@ -381,7 +369,7 @@ export const useChatStore = create((set, get) => ({
         socket.off('newMessage');
         socket.off('newGroup');
         socket.off('groupUpdated');
-        socket.off('call-user'); // Clean up video listener
+        socket.off('call-user'); // Detaches ring subscription.
         socket.off('call-ended');
         socket.off("messageDeleted");
     },

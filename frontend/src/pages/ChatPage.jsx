@@ -6,11 +6,11 @@ import ChatsList from '../components/ChatsList'
 import ContactList from '../components/ContactList'
 import ChatContainer from '../components/ChatContainer'
 import NoConversationPlaceholder from '../components/NoConversationPlaceholder'
-import VideoCall from '../components/VideoCall' // 1. Import Video Component
-import { PhoneOff, Video } from 'lucide-react' // 2. Import Icons
+import VideoCall from '../components/VideoCall'
+import { PhoneOff, Video } from 'lucide-react'
 
 function ChatPage() {
-  // 3. Destructure new video states
+  // Extracts session bindings.
   const {
     activeTab,
     selectedUser,
@@ -23,10 +23,10 @@ function ChatPage() {
   } = useChatStore();
 
   return (
-    // Added 'relative' so the popup can position itself absolutely inside this container
+    // Establishes absolute positioning context for overlays.
     <div className='h-[100dvh] w-full flex overflow-hidden relative'>
 
-      {/* LEFT SIDE */}
+      {/* Primary navigation pane. */}
       <div className={`${selectedUser ? "hidden md:flex" : "flex"} w-full md:w-96 bg-base-200 flex-col border-r border-base-300`}>
         <ProfileHeader />
         <ActiveTabSwitch />
@@ -36,18 +36,16 @@ function ChatPage() {
         </div>
       </div>
 
-      {/* RIGHT SIDE */}
+      {/* Active conversation viewport. */}
       <div className={`${!selectedUser ? "hidden md:flex" : "flex"} flex-1 flex-col bg-base-100`}>
         {selectedUser ? <ChatContainer /> : <NoConversationPlaceholder />}
       </div>
 
-      {/* ======================================================= */}
-      {/* INCOMING CALL POPUP (The Ringer)                     */}
-      {/* ======================================================= */}
+      {/* Incoming session notification overlay. */}
       {isIncoming && !isCalling && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-base-300 p-4 rounded-xl shadow-2xl z-50 border border-primary flex items-center gap-4 animate-bounce">
 
-          {/* Avatar / Caller Initials */}
+          {/* Visual identity fallback. */}
           <div className="avatar placeholder">
             <div className="bg-neutral text-neutral-content rounded-full w-12 ring ring-primary ring-offset-base-100 ring-offset-2">
               <span className="text-xl font-bold uppercase">
@@ -56,15 +54,15 @@ function ChatPage() {
             </div>
           </div>
 
-          {/* Caller Text */}
+          {/* Session metadata. */}
           <div>
             <p className="font-bold text-lg">{callData?.name || "Unknown User"}</p>
             <p className="text-xs text-base-content/70">Incoming Video Call...</p>
           </div>
 
-          {/* Actions */}
+          {/* Session controls. */}
           <div className="flex gap-2 ml-4">
-            {/* Accept Button */}
+            {/* Affirmative action hook. */}
             <button
               onClick={acceptIncomingCall}
               className="btn btn-circle btn-success text-white shadow-lg"
@@ -73,7 +71,7 @@ function ChatPage() {
               <Video size={20} />
             </button>
 
-            {/* Reject Button */}
+            {/* Dismissal action hook. */}
             <button
               onClick={() => endCall(callData?.from)}
               className="btn btn-circle btn-error text-white shadow-lg"
@@ -85,9 +83,7 @@ function ChatPage() {
         </div>
       )}
 
-      {/* ======================================================= */}
-      {/* VIDEO CALL SCREEN (Overlay)                          */}
-      {/* ======================================================= */}
+      {/* WebRTC active session viewport. */}
       {isCalling && (
         <VideoCall />
       )}

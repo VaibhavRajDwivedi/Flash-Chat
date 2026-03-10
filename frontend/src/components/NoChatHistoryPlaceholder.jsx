@@ -4,7 +4,7 @@ import { useChatStore } from "../store/useChatStore";
 const NoChatHistoryPlaceholder = ({ name }) => {
   const { sendMessage, selectedUser } = useChatStore();
 
-  // Check if we are in a group chat
+  // Resolves conversation context.
   const isGroup = selectedUser?.members && selectedUser.members.length > 0;
 
   const handleQuickReply = async (text) => {
@@ -17,15 +17,15 @@ const NoChatHistoryPlaceholder = ({ name }) => {
 
   const suggestions = isGroup
     ? [
-        { label: "👋 Break the Ice", text: "Hello everyone! 👋" },
-        { label: "🚀 Let's Start", text: "Let's get things started! 🚀" },
-        { label: "❓ Status Check", text: "What is the update? ❓" },
-      ]
+      { label: "👋 Break the Ice", text: "Hello everyone! 👋" },
+      { label: "🚀 Let's Start", text: "Let's get things started! 🚀" },
+      { label: "❓ Status Check", text: "What is the update? ❓" },
+    ]
     : [
-        { label: "👋 Say Hello", text: "Hello! 👋" },
-        { label: "🤔 How are you?", text: "How are you doing? 🤔" },
-        { label: "☕ Catch up?", text: "Free for a coffee chat? ☕" },
-      ];
+      { label: "👋 Say Hello", text: "Hello! 👋" },
+      { label: "🤔 How are you?", text: "How are you doing? 🤔" },
+      { label: "☕ Catch up?", text: "Free for a coffee chat? ☕" },
+    ];
 
   return (
     <div className="flex flex-col items-center justify-center h-full text-center p-6">
@@ -43,14 +43,14 @@ const NoChatHistoryPlaceholder = ({ name }) => {
 
       <div className="flex flex-col space-y-3 max-w-md mb-8">
         <p className="text-slate-400 text-sm leading-relaxed">
-          {isGroup 
-            ? "Everyone is here! Send a message to break the ice and get the discussion rolling." 
+          {isGroup
+            ? "Everyone is here! Send a message to break the ice and get the discussion rolling."
             : "This is the very beginning of your conversation. Say hello to start connecting!"}
         </p>
         <div className="h-px w-32 bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent mx-auto"></div>
       </div>
 
-      {/* Quick Reply Buttons */}
+      {/* Automated interaction starters. */}
       <div className="flex flex-wrap gap-3 justify-center">
         {suggestions.map((suggestion, index) => (
           <button

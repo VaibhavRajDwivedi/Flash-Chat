@@ -3,7 +3,7 @@ const groupSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: true, // Every group needs a name (e.g., "Family", "Project Team")
+      required: true, // Clarifies purpose during UI rendering.
     },
     admin: [
       {
@@ -14,11 +14,11 @@ const groupSchema = new mongoose.Schema(
     members: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "User", // Array of User IDs who are in this group
+        ref: "User", // Tracks participation limits and permissions.
       },
     ],
     groupImage: {
-      type: String, // Optional: URL to a group icon
+      type: String, // Enhances distinctiveness in list views.
       default: "",
     },
   },

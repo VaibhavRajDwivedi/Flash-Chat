@@ -6,14 +6,14 @@ const sendSystemMessage = async (groupId, text, senderId) => {
     try {
         const systemMsg = new Message({
             groupId,
-            senderId, // Required by schema
+            senderId, // Satisfies validation requirements.
             text,
             isSystemMessage: true,
         });
 
         await systemMsg.save();
 
-        // Need the group to get member IDs for broadcasting
+        // Fetches recipients for targeted dispatch.
         const group = await Group.findById(groupId);
         if (!group) return;
 
